@@ -5,7 +5,7 @@ import pytest
 from engine import Engine, Person
 from engine.packs import export_pack, import_pack, load_pack_text
 
-PACKS = sorted((Path(__file__).resolve().parents[1] / "packs").glob("*.yaml"))
+PACKS = sorted((Path(__file__).resolve().parents[1] / "custom_components" / "homekeeper" / "packs").glob("*.yaml"))
 TODAY = date(2026, 11, 14)
 
 

@@ -163,7 +163,7 @@ async def test_bills_pack_imports_billers_as_subentries(hass, mqtt_mock, bill_en
     freezer.move_to("2026-11-21 09:00:00")
     entry = bill_entry()
     rt = await start(hass, entry)
-    text = (Path(__file__).resolve().parents[2] / "packs" / "bills.yaml").read_text()
+    text = (Path(__file__).resolve().parents[2] / "custom_components" / "homekeeper" / "packs" / "bills.yaml").read_text()
     # the shipped pack's module id collides with the existing "bills" module: kept as-is
     out = await hass.services.async_call(
         DOMAIN, "import_pack", {"pack": text}, blocking=True, return_response=True)

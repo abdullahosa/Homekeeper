@@ -2,12 +2,17 @@
 
 A Home Assistant integration that keeps a household's recurring duties (maintenance, bills, rental, lawn) from depending on one person: owners, schedules, reminders, escalation and history, all editable from the HA UI.
 
-**Status:** early build. The tested engine and the Home Assistant integration (setup screens for people, modules and duties; to-do, calendar and sensor entities; services; notifications in English and Arabic; pack import) are in place. Not yet released; try it on a spare Home Assistant instance first. The BillBot bridge (bills open and close from BillBot's MQTT state; optional BillBot add-on in `billbot/`) is in. NFC tags and Assist voice are in ([docs/NFC-AND-VOICE.md](docs/NFC-AND-VOICE.md)). The dashboard card and wall-panel view are in ([docs/DASHBOARD.md](docs/DASHBOARD.md)); packs polish and the HACS release are next.
+**Status:** version 0.1.0, ready to try on a spare Home Assistant. It has not yet been run on a live instance, so test before relying on it.
 
+What it does: keeps recurring duties (lawn, rental, bills, home maintenance) from depending on one person, with owners, schedules, reminders in English or Arabic, escalation, history, a wall-panel dashboard, optional BillBot, NFC and voice support. Everything is edited from the Home Assistant UI.
+
+- Install and first setup: [docs/INSTALL.md](docs/INSTALL.md)
+- Dashboard and wall panel: [docs/DASHBOARD.md](docs/DASHBOARD.md)
+- NFC tags and voice: [docs/NFC-AND-VOICE.md](docs/NFC-AND-VOICE.md)
 - Spec: [docs/SPEC.md](docs/SPEC.md)
 - BillBot add-on and install notes: [billbot/BILLBOT-PATCH.md](billbot/BILLBOT-PATCH.md)
-- Starter packs: [packs/](packs/) (generic only; personal details stay in your own HA)
+- Starter packs: [custom_components/homekeeper/packs/](custom_components/homekeeper/packs/) (generic only; import by name; personal details stay in your own HA)
 
-Install (once released): add this repository to HACS as a custom repository, then add the Homekeeper integration.
+Install: add this repository to HACS as a custom repository, then add the Homekeeper integration (see the install guide).
 
 This repository is public. Do not commit names, addresses, amounts or credentials.

@@ -179,31 +179,117 @@
   "services": {
     "complete": {
       "name": "Complete",
-      "description": "Mark a duty done."
+      "description": "Mark a duty done.",
+      "fields": {
+        "duty_id": {
+          "name": "Duty",
+          "description": "The id of the duty."
+        },
+        "by": {
+          "name": "Done by",
+          "description": "Who did it (a person id). Defaults to the person who owns the duty."
+        },
+        "method": {
+          "name": "Method",
+          "description": "How it was completed."
+        },
+        "note": {
+          "name": "Note",
+          "description": "Optional note saved in the history."
+        }
+      }
     },
     "snooze": {
       "name": "Snooze",
-      "description": "Hide a duty's reminders until later."
+      "description": "Hide a duty's reminders until later.",
+      "fields": {
+        "duty_id": {
+          "name": "Duty",
+          "description": "The id of the duty."
+        },
+        "hours": {
+          "name": "Hours",
+          "description": "Snooze for this many hours."
+        },
+        "until": {
+          "name": "Until",
+          "description": "Snooze until this date."
+        }
+      }
     },
     "skip": {
       "name": "Skip",
-      "description": "Skip this occurrence (a reason is required)."
+      "description": "Skip this occurrence (a reason is required).",
+      "fields": {
+        "duty_id": {
+          "name": "Duty",
+          "description": "The id of the duty."
+        },
+        "reason": {
+          "name": "Reason",
+          "description": "Why it is being skipped (required)."
+        },
+        "by": {
+          "name": "Skipped by",
+          "description": "Who skipped it (a person id)."
+        }
+      }
     },
     "signal": {
       "name": "Signal",
-      "description": "Tell a signal-driven duty that its event happened."
+      "description": "Tell a signal-driven duty that its event happened.",
+      "fields": {
+        "duty_id": {
+          "name": "Duty",
+          "description": "The id of the duty to open from an outside signal."
+        }
+      }
     },
     "reassign": {
       "name": "Reassign",
-      "description": "Change who owns a duty."
+      "description": "Change who owns a duty.",
+      "fields": {
+        "duty_id": {
+          "name": "Duty",
+          "description": "The id of the duty."
+        },
+        "owners": {
+          "name": "Owners",
+          "description": "Person ids; the first is the primary owner."
+        }
+      }
     },
     "import_pack": {
       "name": "Import pack",
-      "description": "Import duties from a YAML pack."
+      "description": "Import duties from a YAML pack.",
+      "fields": {
+        "pack": {
+          "name": "Pack YAML",
+          "description": "Paste the pack YAML text."
+        },
+        "path": {
+          "name": "File path",
+          "description": "Path to a pack file inside your Home Assistant config folder."
+        },
+        "overwrite": {
+          "name": "Overwrite",
+          "description": "Replace duties that already exist."
+        },
+        "dry_run": {
+          "name": "Dry run",
+          "description": "Check the pack and report what would change, without changing anything."
+        }
+      }
     },
     "export_pack": {
       "name": "Export pack",
-      "description": "Export a module as a YAML pack."
+      "description": "Export a module as a YAML pack.",
+      "fields": {
+        "module": {
+          "name": "Module",
+          "description": "The module id to export."
+        }
+      }
     }
   }
 }
