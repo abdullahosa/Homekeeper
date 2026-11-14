@@ -123,7 +123,8 @@
             "how_to": "How to",
             "season": "Active months (e.g. 3,4,5)",
             "done_by": "Can be marked done by",
-            "enabled": "Enabled"
+            "enabled": "Enabled",
+            "nfc_tags": "NFC tag IDs that complete this (comma separated; from Settings > Tags)"
           }
         }
       },

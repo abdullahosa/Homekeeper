@@ -69,6 +69,7 @@ class Runtime:
         self._saved_occurrences: dict[str, dict[str, Any]] = {}
         self.signature: tuple = ()
         self.importing = False
+        self._recent: dict[str, datetime] = {}
         self.bridge = BillBotBridge(self)
 
     # ------------------------------------------------------------ lifecycle
@@ -206,6 +207,7 @@ class Runtime:
         for event in result.events:
             if event.type != "completed" or event.method in ("", "auto"):
                 continue
+            self._recent[event.duty_id] = now
             duty = self.engine.duties.get(event.duty_id)
             if duty is not None and duty.biller:
                 await self.bridge.async_press_mark_paid(duty.biller)
@@ -295,6 +297,29 @@ class Runtime:
             note = self.engine.not_mine(duty_id, person_id, now.date())
             self.persist_owners(duty_id)
             await self._dispatch(TickResult(notifications=[note]), now)
+        return True
+
+    RECENT_MINUTES = 10
+
+    def recently_done(self, duty_id: str, now: datetime) -> bool:
+        """True if someone completed this duty a moment ago (double tag scan, repeated phrase)."""
+        last = self._recent.get(duty_id)
+        return last is not None and (now - last).total_seconds() < self.RECENT_MINUTES * 60
+
+    async def async_handle_tag(self, tag_id: str) -> bool:
+        """An NFC tag was scanned. Returns True if it belongs to a duty."""
+        duty = self.engine.find_by_tag(tag_id)
+        if duty is None:
+            return False
+        now = dt_util.now()
+        if duty.id not in self.engine.occurrences or self.recently_done(duty.id, now):
+            return True
+        try:
+            result = self.engine.complete(duty.id, None, now, "nfc")
+        except ValueError:
+            _LOGGER.warning("Tag %s cannot complete %s (nfc not allowed)", tag_id, duty.id)
+            return True
+        await self._dispatch(result, now)
         return True
 
     def notify_entities(self) -> None:

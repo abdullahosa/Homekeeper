@@ -72,9 +72,11 @@ def test_complete_advances_and_records_history():
 
 def test_complete_method_must_be_allowed():
     e = make_engine()
-    e.add_duty(duty(), date(2026, 11, 14))
+    e.add_duty(duty(done_by=["button"]), date(2026, 11, 14))
     with pytest.raises(ValueError):
         e.complete("filters", "a", at("2026-12-01"), "nfc")
+    with pytest.raises(ValueError):
+        e.complete("filters", "a", at("2026-12-01"), "auto")
 
 
 def test_snooze_suppresses_then_resumes():
@@ -241,3 +243,17 @@ def test_digest():
     e.add_duty(duty(), date(2026, 11, 14))
     e.tick(at("2026-12-02"))
     assert e.digest(date(2026, 12, 2))["overdue"] == ["filters"]
+
+
+def test_nfc_tags_lookup_and_uniqueness():
+    e = make_engine()
+    e.add_duty(duty(nfc_tags=["tag-1"]), date(2026, 11, 14))
+    assert e.find_by_tag("tag-1").id == "filters"
+    assert e.find_by_tag("nope") is None
+    with pytest.raises(ValueError):
+        e.add_duty(duty(id="other", nfc_tags=["tag-1"]), date(2026, 11, 14))
+    e.add_duty(duty(id="third", nfc_tags=["tag-3"]), date(2026, 11, 14))
+    with pytest.raises(ValueError):
+        e.update_duty(duty(id="third", nfc_tags=["tag-1"]), date(2026, 11, 14))
+    e.set_enabled("filters", False, date(2026, 11, 14))
+    assert e.find_by_tag("tag-1") is None  # a disabled duty releases its tag

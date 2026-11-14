@@ -15,26 +15,22 @@ duties:
     schedule: {type: day_of_month, days: [1, 15], next_business_day: true}
     remind: [0d]
     escalate: [{after: 2d, notify: [admin]}]
-    done_by: [button, auto]
+    done_by: [button, voice, auto]
   - id: hoa-spring
     title: {en: Pay HOA dues (spring)}
     schedule: {type: yearly_window, opens: "03-01", due: "03-31"}
     remind: [-7d, 0d]
-    done_by: [button]
   - id: hoa-fall
     title: {en: Pay HOA dues (fall)}
     schedule: {type: yearly_window, opens: "09-15", due: "10-15"}
     remind: [-7d, 0d]
-    done_by: [button]
   - id: tenant-filters
     title: {en: Send HVAC filters to tenant}
     schedule: {type: interval, every: 3m}
     remind: [-7d, 0d]
     how_to: "Order or ship one filter per unit. Record sizes in the duty notes."
-    done_by: [button]
   - id: lease-renewal
     title: {en: Decide on lease renewal}
     schedule: {type: yearly_window, opens: "01-01", due: "03-01"}
     remind: [-30d, -7d]
     how_to: "Replace opens and due with the real lease end date minus 6 months."
-    done_by: [button]

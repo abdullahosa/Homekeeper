@@ -98,6 +98,10 @@ class Engine:
         for method in duty.done_by:
             if method not in DONE_METHODS:
                 raise ValueError(f"unknown done_by method: {method}")
+        for tag in duty.nfc_tags:
+            other = self.find_by_tag(tag)
+            if other is not None and other.id != duty.id:
+                raise ValueError(f"tag {tag} already belongs to {other.id}")
 
     def _start(self, duty: Duty, today: date) -> Occurrence | None:
         if not duty.enabled:
@@ -117,6 +121,12 @@ class Engine:
         return occ
 
     # ------------------------------------------------------------ lookups
+    def find_by_tag(self, tag_id: str) -> Duty | None:
+        for duty in self.duties.values():
+            if duty.enabled and tag_id in duty.nfc_tags:
+                return duty
+        return None
+
     def effective_owners(self, duty: Duty) -> list[str]:
         owners = duty.owners or self.modules[duty.module].owners
         return [o for o in owners if o in self.people]

@@ -92,8 +92,8 @@ Mobile push per person, in their language. Actions: **Done**, **Snooze 1 day**, 
 
 ### 4.6 Done-by methods
 - Button in the notification or card.
-- NFC tag scan (tag id mapped to a duty).
-- Assist voice: "I mowed the lawn" completes the matching duty.
+- NFC tag scan (tag ids listed on the duty; see docs/NFC-AND-VOICE.md).
+- Assist voice: "mark <duty> as done" completes the matching duty (see docs/NFC-AND-VOICE.md).
 - Auto: a sensor or BillBot signal completes it.
 
 ## 5. BillBot interface
@@ -142,7 +142,7 @@ Packs are YAML. They create duties, modules and billers idempotently (keyed by `
 0. Repo skeleton, spec, packs. (done)
 1. Core engine: duties, schedules, occurrences, storage, pure Python with tests. (done)
 2. HA integration: config flow, subentries, entities, services, notifications. (done)
-3. NFC tags and Assist voice.
+3. NFC tags and Assist voice. (done)
 4. BillBot bridge and biller subentries. (done)
 5. Dashboard card, wall panel, packs polish, release via HACS.
 

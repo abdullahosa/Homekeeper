@@ -396,6 +396,7 @@ class DutyFlow(_BaseSubentryFlow):
                     escalate=escalate,
                     how_to=user_input.get("how_to", ""),
                     done_by=user_input.get("done_by") or ["button"],
+                    nfc_tags=_csv(user_input.get("nfc_tags")),
                     enabled=user_input.get("enabled", True),
                     season=season,
                 ).to_dict()
@@ -408,9 +409,10 @@ class DutyFlow(_BaseSubentryFlow):
             ): _text(),
             vol.Optional("how_to", default=old.get("how_to", "")): _text(True),
             vol.Optional("season", default=",".join(str(m) for m in old.get("season") or [])): _text(),
-            vol.Optional("done_by", default=old.get("done_by", ["button"])): _select(
-                DONE_BY_CHOICES, multiple=True
-            ),
+            vol.Optional("nfc_tags", default=",".join(old.get("nfc_tags", []))): _text(),
+            vol.Optional(
+                "done_by", default=old.get("done_by", ["button", "nfc", "voice"])
+            ): _select(DONE_BY_CHOICES, multiple=True),
             vol.Optional("enabled", default=old.get("enabled", True)): selector.BooleanSelector(),
         }
         return self.async_show_form(
