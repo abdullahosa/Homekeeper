@@ -337,6 +337,25 @@ class Engine:
         )
         return Notification("not_mine", duty_id, occ.id, recipients, detail=by)
 
+    def project(self, duty_id: str, until: date, limit: int = 60) -> list[date]:
+        """Future due dates of a duty up to `until`, assuming each is done on time."""
+        occ = self.occurrences.get(duty_id)
+        duty = self.duties.get(duty_id)
+        if occ is None or duty is None:
+            return []
+        out: list[date] = []
+        due = occ.due
+        while due <= until and len(out) < limit:
+            out.append(due)
+            window = sch.next_window(duty.schedule, due, due)
+            if window is None:
+                break
+            window = sch.shift_into_season(window, duty.season)
+            if window[1] <= due:
+                break
+            due = window[1]
+        return out
+
     # ------------------------------------------------------------ reports
     def health(self) -> list[str]:
         problems = []

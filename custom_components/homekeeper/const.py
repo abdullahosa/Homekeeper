@@ -2,15 +2,19 @@
 
 DOMAIN = "homekeeper"
 
-STATES = ("upcoming", "due", "overdue", "done", "skipped")
-SCHEDULE_TYPES = (
-    "interval",
-    "after_completion",
-    "day_of_month",
-    "yearly_window",
-    "condition",
-    "signal",
-)
-DONE_BY = ("button", "nfc", "voice", "auto")
-ROLES = ("owner", "observer", "admin")
-LANGUAGES = ("en", "ar")
+STORAGE_KEY = "homekeeper.state"
+STORAGE_VERSION = 1
+
+SUBENTRY_PERSON = "person"
+SUBENTRY_MODULE = "module"
+SUBENTRY_DUTY = "duty"
+
+CONF_CONDITIONS = "conditions"  # "key=sensor.entity, key2=sensor.other"
+TICK_INTERVAL_MINUTES = 5
+
+EVENT_PREFIX = "homekeeper_"
+ACTION_PREFIX = "HK|"  # mobile-app action id: HK|<verb>|<duty_id>|<person_id>
+
+PLATFORMS = ["todo", "calendar", "sensor", "binary_sensor"]
+
+SIGNAL_UPDATE = "homekeeper_update_{entry_id}"

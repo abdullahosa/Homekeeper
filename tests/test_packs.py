@@ -2,7 +2,6 @@ from datetime import date
 from pathlib import Path
 
 import pytest
-
 from engine import Engine, Person
 from engine.packs import export_pack, import_pack, load_pack_text
 

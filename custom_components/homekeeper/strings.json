@@ -1,0 +1,171 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Homekeeper",
+        "description": "Shared household duties. Add people, modules and duties from the integration page afterwards."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Homekeeper is already set up."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Homekeeper options",
+        "description": "Map condition names to sensors, one per line: name=sensor.entity_id",
+        "data": {
+          "conditions": "Conditions"
+        }
+      }
+    }
+  },
+  "config_subentries": {
+    "person": {
+      "initiate_flow": {
+        "user": "Add person",
+        "reconfigure": "Edit person"
+      },
+      "entry_type": "Person",
+      "step": {
+        "user": {
+          "title": "Person",
+          "data": {
+            "id": "ID (short, no spaces)",
+            "name": "Name",
+            "role": "Role",
+            "language": "Notification language",
+            "notify": "Notify service (e.g. notify.mobile_app_phone)",
+            "quiet_start": "Quiet hours start (HH:MM)",
+            "quiet_end": "Quiet hours end (HH:MM)"
+          }
+        }
+      },
+      "error": {
+        "bad_id": "Use lowercase letters, numbers, - and _.",
+        "id_exists": "That ID is already used.",
+        "quiet_both": "Set both quiet hours times, or neither."
+      },
+      "abort": {
+        "reconfigure_successful": "Saved."
+      }
+    },
+    "module": {
+      "initiate_flow": {
+        "user": "Add module",
+        "reconfigure": "Edit module"
+      },
+      "entry_type": "Module",
+      "step": {
+        "user": {
+          "title": "Module",
+          "data": {
+            "id": "ID",
+            "title_en": "Title (English)",
+            "title_ar": "Title (Arabic)",
+            "owners": "Default owners"
+          }
+        }
+      },
+      "error": {
+        "bad_id": "Use lowercase letters, numbers, - and _.",
+        "id_exists": "That ID is already used."
+      },
+      "abort": {
+        "reconfigure_successful": "Saved."
+      }
+    },
+    "duty": {
+      "initiate_flow": {
+        "user": "Add duty",
+        "reconfigure": "Edit duty"
+      },
+      "entry_type": "Duty",
+      "step": {
+        "user": {
+          "title": "Duty",
+          "data": {
+            "id": "ID (short, no spaces)",
+            "module": "Module",
+            "title_en": "Title (English)",
+            "title_ar": "Title (Arabic)",
+            "owners": "Owners",
+            "observers": "Extra observers",
+            "schedule_type": "Schedule type"
+          }
+        },
+        "schedule": {
+          "title": "Schedule: {type}",
+          "description": "Durations look like 3d, 2w, 6m, 1y. Dates are MM-DD. Conditions look like soil_temp_5day_avg_f:50.",
+          "data": {
+            "every": "Every",
+            "anchor": "Anchor date (YYYY-MM-DD)",
+            "first_due": "First due date (YYYY-MM-DD)",
+            "days": "Days of month (e.g. 1,15)",
+            "next_business_day": "Move weekends to Monday",
+            "opens": "Opens (MM-DD)",
+            "due": "Due (MM-DD)",
+            "not_before": "Not before (MM-DD)",
+            "not_after": "Not after (MM-DD)",
+            "when": "Open only when",
+            "open_early_when": "Open early when",
+            "completes": "Completes these duties (comma separated IDs)",
+            "due_in": "Due after signal (e.g. 3d)",
+            "opens_before": "Open this long before due"
+          }
+        },
+        "details": {
+          "title": "Reminders and details",
+          "data": {
+            "remind": "Remind (e.g. -3d,0d)",
+            "escalate_after": "Escalate to admins after overdue by (e.g. 2d)",
+            "how_to": "How to",
+            "season": "Active months (e.g. 3,4,5)",
+            "done_by": "Can be marked done by",
+            "enabled": "Enabled"
+          }
+        }
+      },
+      "error": {
+        "bad_id": "Use lowercase letters, numbers, - and _.",
+        "id_exists": "That ID is already used.",
+        "bad_schedule": "That schedule is not valid.",
+        "bad_details": "Check the reminder durations and months."
+      },
+      "abort": {
+        "reconfigure_successful": "Saved."
+      }
+    }
+  },
+  "services": {
+    "complete": {
+      "name": "Complete",
+      "description": "Mark a duty done."
+    },
+    "snooze": {
+      "name": "Snooze",
+      "description": "Hide a duty's reminders until later."
+    },
+    "skip": {
+      "name": "Skip",
+      "description": "Skip this occurrence (a reason is required)."
+    },
+    "signal": {
+      "name": "Signal",
+      "description": "Tell a signal-driven duty that its event happened."
+    },
+    "reassign": {
+      "name": "Reassign",
+      "description": "Change who owns a duty."
+    },
+    "import_pack": {
+      "name": "Import pack",
+      "description": "Import duties from a YAML pack."
+    },
+    "export_pack": {
+      "name": "Export pack",
+      "description": "Export a module as a YAML pack."
+    }
+  }
+}
