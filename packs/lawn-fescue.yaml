@@ -1,0 +1,35 @@
+# Cool-season (tall fescue) lawn, transition-zone calendar. Adjust dates for your area.
+module: lawn
+title: {en: Lawn}
+duties:
+  - id: preemergent
+    title: {en: Apply pre-emergent for crabgrass}
+    schedule:
+      type: condition
+      not_before: "02-15"
+      not_after: "04-15"
+      open_early_when: {soil_temp_5day_avg_f: 50}
+    remind: [0d]
+    how_to: "Mix concentrate per label in a pump sprayer. Water in lightly."
+    done_by: [button]
+  - id: fertilize-fall
+    title: {en: Fertilize (fall)}
+    schedule: {type: yearly_window, opens: "11-01", due: "11-30"}
+    remind: [0d]
+    done_by: [button]
+  - id: overseed
+    title: {en: Overseed}
+    schedule: {type: yearly_window, opens: "09-15", due: "10-15"}
+    remind: [-7d, 0d]
+    done_by: [button]
+  - id: mow
+    title: {en: Mow the lawn}
+    season: [3, 4, 5, 6, 7, 8, 9, 10, 11]
+    schedule: {type: after_completion, every: 7d}
+    remind: [0d]
+    done_by: [button, nfc]
+  - id: soil-test
+    title: {en: Send a soil sample}
+    schedule: {type: yearly_window, opens: "06-01", due: "08-31"}
+    remind: [-7d, 0d]
+    done_by: [button]

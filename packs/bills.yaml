@@ -1,0 +1,25 @@
+# Generic bills pack. Billers are fed by BillBot; fill in real senders after import.
+module: bills
+title: {en: Bills, ar: الفواتير}
+billers:
+  - id: electric
+    title: {en: Electric bill}
+    kind: bill
+    cadence_days: 31
+    sender_domains: [example-utility.com]
+  - id: water
+    title: {en: Water bill}
+    kind: bill
+    cadence_days: 31
+    sender_domains: [example-water.com]
+  - id: internet
+    title: {en: Internet bill}
+    kind: bill
+    cadence_days: 31
+    sender_domains: [example-isp.com]
+duties:
+  - id: bills-review
+    title: {en: Review bills and confirm all are paid}
+    schedule: {type: day_of_month, days: [1]}
+    remind: [0d]
+    done_by: [button]

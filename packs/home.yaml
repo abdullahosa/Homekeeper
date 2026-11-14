@@ -1,0 +1,25 @@
+# Generic home maintenance pack. Replace sizes in the notes after import.
+module: home
+title: {en: Home}
+duties:
+  - id: hvac-filters
+    title: {en: Replace HVAC filters}
+    schedule: {type: after_completion, every: 3m}
+    remind: [-7d, 0d]
+    how_to: "One filter per return. Sizes: fill in after import."
+    done_by: [button, nfc]
+  - id: smoke-detector-test
+    title: {en: Test smoke detectors}
+    schedule: {type: interval, every: 6m}
+    remind: [0d]
+    done_by: [button]
+  - id: water-heater-flush
+    title: {en: Flush the tank water heater}
+    schedule: {type: interval, every: 12m}
+    remind: [-7d, 0d]
+    done_by: [button]
+  - id: robot-vacuum-filter
+    title: {en: Replace robot vacuum filter and brushes}
+    schedule: {type: after_completion, every: 2m}
+    remind: [0d]
+    done_by: [button]
