@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from datetime import timedelta
+from pathlib import Path
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import Event, HomeAssistant
 from homeassistant.helpers.event import async_track_time_interval
 
-from . import voice
-from .const import DOMAIN, PLATFORMS, TICK_INTERVAL_MINUTES
+from . import voice, websocket
+from .const import CARD_FILE, DOMAIN, PLATFORMS, STATIC_URL, TICK_INTERVAL_MINUTES
 from .runtime import Runtime
 from .services import async_register_services
 
@@ -25,6 +27,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = runtime
 
     async_register_services(hass)
+    await _async_register_frontend(hass)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     async def _tick(now) -> None:
@@ -81,3 +84,26 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if ok:
         hass.data[DOMAIN].pop(entry.entry_id)
     return ok
+
+
+async def _async_register_frontend(hass: HomeAssistant) -> None:
+    """Serve the card and load it on every dashboard. Done once per Home Assistant run."""
+    if hass.data.get(f"{DOMAIN}_frontend"):
+        return
+    hass.data[f"{DOMAIN}_frontend"] = True
+    websocket.async_register(hass)
+    folder = Path(__file__).parent / "frontend"
+    version = json.loads((Path(__file__).parent / "manifest.json").read_text())["version"]
+    if getattr(hass, "http", None) is None or "frontend" not in hass.config.components:
+        _LOGGER.debug("No frontend in this Home Assistant run; skipping the Homekeeper card")
+        return
+    try:
+        from homeassistant.components.frontend import add_extra_js_url
+        from homeassistant.components.http import StaticPathConfig
+
+        await hass.http.async_register_static_paths(
+            [StaticPathConfig(STATIC_URL, str(folder), cache_headers=False)]
+        )
+        add_extra_js_url(hass, f"{STATIC_URL}/{CARD_FILE}?v={version}")
+    except Exception:  # noqa: BLE001 - the card is optional; entities still work without it
+        _LOGGER.warning("Could not register the Homekeeper card", exc_info=True)
