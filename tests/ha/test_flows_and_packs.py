@@ -1,13 +1,14 @@
 from pathlib import Path
 
 import pytest
+import voluptuous as vol
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.exceptions import ServiceValidationError
 
 from custom_components.homekeeper.const import DOMAIN
 from custom_components.homekeeper.runtime import get_runtime, parse_conditions
 
-PACKS = Path(__file__).resolve().parents[2] / "packs"
+PACKS = Path(__file__).resolve().parents[2] / "custom_components" / "homekeeper" / "packs"
 
 
 async def test_user_flow_single_instance(hass):
@@ -204,3 +205,24 @@ async def test_quiet_hours_hold_non_escalation(hass, entry_factory, notify_calls
     freezer.move_to("2026-12-02 07:30:00")
     await rt.async_flush_queue(__import__("homeassistant.util.dt", fromlist=["now"]).now())
     assert "mobile_a" in {c.service for c in notify_calls}
+
+
+async def test_import_bundled_pack_by_name(hass, entry_factory, freezer):
+    freezer.move_to("2026-11-14 09:00:00")
+    entry = entry_factory()
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    out = await hass.services.async_call(
+        DOMAIN, "import_pack", {"name": "lawn-fescue"}, blocking=True, return_response=True)
+    assert out["applied"] is True and "duty:mow" in out["created"]
+    with pytest.raises(vol.Invalid):
+        await hass.services.async_call(DOMAIN, "import_pack", {"name": "nope"}, blocking=True)
+
+
+def test_services_yaml_lists_every_bundled_pack():
+    import yaml
+
+    from custom_components.homekeeper.services import BUNDLED_PACKS
+
+    spec = yaml.safe_load((PACKS.parent / "services.yaml").read_text())
+    assert spec["import_pack"]["fields"]["name"]["selector"]["select"]["options"] == BUNDLED_PACKS
+    assert BUNDLED_PACKS == sorted(p.stem for p in PACKS.glob("*.yaml"))

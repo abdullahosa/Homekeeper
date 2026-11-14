@@ -25,6 +25,11 @@ reassign:
     owners: {required: true, selector: {text: {multiple: true}}}
 import_pack:
   fields:
+    name:
+      selector:
+        select:
+          options: [bills, home, lawn-fescue, rental]
+          mode: dropdown
     pack: {selector: {text: {multiline: true}}}
     path: {selector: {text: {}}}
     overwrite: {default: false, selector: {boolean: {}}}

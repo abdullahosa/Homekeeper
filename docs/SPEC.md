@@ -112,7 +112,7 @@ Implemented. BillBot reads, Homekeeper runs.
 
 ## 6. Packs
 
-Packs are YAML. They create duties, modules and billers idempotently (keyed by `id`). Public packs are generic: placeholders for amounts, sizes and people. Personal values are filled in after import. Packs shipped in this repo: `bills`, `rental`, `home`, `lawn-fescue`.
+Packs are YAML. They create duties, modules and billers idempotently (keyed by `id`). Public packs are generic: placeholders for amounts, sizes and people. Personal values are filled in after import. Packs ship inside the integration (`custom_components/homekeeper/packs/`) so a HACS install has them: `bills`, `rental`, `home`, `lawn-fescue`. `homekeeper.import_pack` takes `name` (a bundled pack), `pack` (YAML text) or `path`.
 
 ## 7. Health checks
 
@@ -147,6 +147,6 @@ Packs are YAML. They create duties, modules and billers idempotently (keyed by `
 2. HA integration: config flow, subentries, entities, services, notifications. (done)
 3. NFC tags and Assist voice. (done)
 4. BillBot bridge and biller subentries. (done)
-5. Dashboard card and wall panel (done, see docs/DASHBOARD.md). Packs polish and release via HACS.
+5. Dashboard card and wall panel (done, see docs/DASHBOARD.md). Packs bundled and importable by name, version 0.1.0, HACS and hassfest checks in CI (done). Remaining: live-instance verification, then a tagged release.
 
 Gate: test on a spare HA instance first, then production before the move-out date.

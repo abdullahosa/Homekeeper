@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import timedelta
+from pathlib import Path
 from typing import Any
 
 import voluptuous as vol
@@ -45,8 +46,11 @@ REASSIGN = vol.Schema(
     {vol.Required("duty_id"): cv.string, vol.Required("owners"): vol.All(cv.ensure_list, [cv.string])}
 )
 SIGNAL = vol.Schema({vol.Required("duty_id"): cv.string})
+PACK_DIR = Path(__file__).parent / "packs"
+BUNDLED_PACKS = sorted(f.stem for f in PACK_DIR.glob("*.yaml"))
 IMPORT = vol.Schema(
     {
+        vol.Optional("name"): vol.In(BUNDLED_PACKS),
         vol.Optional("pack"): cv.string,
         vol.Optional("path"): cv.string,
         vol.Optional("overwrite", default=False): cv.boolean,
@@ -127,13 +131,17 @@ def async_register_services(hass: HomeAssistant) -> None:
     async def import_pack_service(call: ServiceCall) -> dict[str, Any]:
         rt = get_runtime(hass)
         text = call.data.get("pack")
+        if not text and call.data.get("name"):
+            text = await hass.async_add_executor_job(
+                _read, str(PACK_DIR / f"{call.data['name']}.yaml")
+            )
         if not text and call.data.get("path"):
             path = call.data["path"]
             if not hass.config.is_allowed_path(path):
                 raise ServiceValidationError(f"Path not allowed: {path}")
             text = await hass.async_add_executor_job(_read, path)
         if not text:
-            raise ServiceValidationError("Give either `pack` (YAML text) or `path`")
+            raise ServiceValidationError("Give `name` (a bundled pack), `pack` (YAML text) or `path`")
         try:
             data = load_pack_text(text)
         except Exception as err:  # noqa: BLE001
