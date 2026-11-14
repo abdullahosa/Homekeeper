@@ -1,13 +1,17 @@
 {
   "domain": "homekeeper",
   "name": "Homekeeper",
-  "codeowners": ["@abdullahosa"],
+  "codeowners": [
+    "@abdullahosa"
+  ],
   "config_flow": true,
-  "dependencies": ["mqtt"],
   "documentation": "https://github.com/abdullahosa/homekeeper",
   "integration_type": "service",
   "iot_class": "local_push",
   "issue_tracker": "https://github.com/abdullahosa/homekeeper/issues",
   "requirements": [],
-  "version": "0.0.1"
+  "version": "0.0.1",
+  "after_dependencies": [
+    "mqtt"
+  ]
 }

@@ -2,7 +2,7 @@
 
 A Home Assistant integration that keeps a household's recurring duties (maintenance, bills, rental, lawn) from depending on one person: owners, schedules, reminders, escalation and history, all editable from the HA UI.
 
-**Status:** early build. Phases 0 and 1 are in place: spec, starter packs, and a tested pure-Python engine (`custom_components/homekeeper/engine`). The Home Assistant wiring comes next.
+**Status:** early build. The tested engine and the Home Assistant integration (setup screens for people, modules and duties; to-do, calendar and sensor entities; services; notifications in English and Arabic; pack import) are in place. Not yet released; try it on a spare Home Assistant instance first. BillBot bridge, dashboard card and NFC/voice are next.
 
 - Spec: [docs/SPEC.md](docs/SPEC.md)
 - Starter packs: [packs/](packs/) (generic only; personal details stay in your own HA)

@@ -1,0 +1,34 @@
+complete:
+  fields:
+    duty_id: {required: true, example: hvac-filters, selector: {text: {}}}
+    by: {example: dad, selector: {text: {}}}
+    method:
+      default: button
+      selector: {select: {options: [button, nfc, voice, auto]}}
+    note: {selector: {text: {}}}
+snooze:
+  fields:
+    duty_id: {required: true, selector: {text: {}}}
+    hours: {selector: {number: {min: 1, max: 1440, mode: box}}}
+    until: {selector: {date: {}}}
+skip:
+  fields:
+    duty_id: {required: true, selector: {text: {}}}
+    reason: {required: true, selector: {text: {}}}
+    by: {selector: {text: {}}}
+signal:
+  fields:
+    duty_id: {required: true, selector: {text: {}}}
+reassign:
+  fields:
+    duty_id: {required: true, selector: {text: {}}}
+    owners: {required: true, selector: {text: {multiple: true}}}
+import_pack:
+  fields:
+    pack: {selector: {text: {multiline: true}}}
+    path: {selector: {text: {}}}
+    overwrite: {default: false, selector: {boolean: {}}}
+    dry_run: {default: false, selector: {boolean: {}}}
+export_pack:
+  fields:
+    module: {required: true, selector: {text: {}}}

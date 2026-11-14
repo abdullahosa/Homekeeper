@@ -1,7 +1,6 @@
 from datetime import date, datetime
 
 import pytest
-
 from engine import Duty, Engine, Module, Person
 
 
