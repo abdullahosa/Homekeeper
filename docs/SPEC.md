@@ -76,6 +76,9 @@ Any schedule can carry `open_early_when` (a condition that opens the window ahea
 - `binary_sensor.homekeeper_healthy`, with attributes naming the failing check.
 - Biller entities keep BillBot's current entity IDs so existing dashboards keep working.
 
+### 4.2.1 Card
+`custom:homekeeper-card` (shipped inside the integration, loaded automatically) shows what is overdue, due and coming up, with Done (tap twice to confirm) and Snooze. `mode: wall` renders big touch tiles for a tablet. It filters by person and module, can default to the logged-in person, and follows the user's language including right-to-left Arabic. Data comes from the `homekeeper/overview` WebSocket command and refreshes on the `homekeeper_changed` event. See docs/DASHBOARD.md.
+
 ### 4.3 Services
 - `homekeeper.complete` (duty, by, method, note)
 - `homekeeper.snooze` (duty, until or hours)
@@ -144,6 +147,6 @@ Packs are YAML. They create duties, modules and billers idempotently (keyed by `
 2. HA integration: config flow, subentries, entities, services, notifications. (done)
 3. NFC tags and Assist voice. (done)
 4. BillBot bridge and biller subentries. (done)
-5. Dashboard card, wall panel, packs polish, release via HACS.
+5. Dashboard card and wall panel (done, see docs/DASHBOARD.md). Packs polish and release via HACS.
 
 Gate: test on a spare HA instance first, then production before the move-out date.

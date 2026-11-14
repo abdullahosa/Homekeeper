@@ -38,7 +38,8 @@
             "language": "Notification language",
             "notify": "Notify service (e.g. notify.mobile_app_phone)",
             "quiet_start": "Quiet hours start (HH:MM)",
-            "quiet_end": "Quiet hours end (HH:MM)"
+            "quiet_end": "Quiet hours end (HH:MM)",
+            "person_entity": "Home Assistant person (links their login to this person)"
           }
         }
       },

@@ -18,6 +18,7 @@ from .const import (
     ACTION_PREFIX,
     CONF_CONDITIONS,
     DOMAIN,
+    EVENT_CHANGED,
     EVENT_PREFIX,
     SIGNAL_UPDATE,
     STORAGE_KEY,
@@ -323,6 +324,7 @@ class Runtime:
         return True
 
     def notify_entities(self) -> None:
+        self.hass.bus.async_fire(EVENT_CHANGED, {"entry_id": self.entry.entry_id})
         async_dispatcher_send(
             self.hass, SIGNAL_UPDATE.format(entry_id=self.entry.entry_id)
         )
@@ -336,7 +338,7 @@ class Runtime:
                 problems.append("mqtt_unavailable")
             elif self.bridge.available is False:
                 problems.append("billbot_offline")
-        return problems
+        return list(dict.fromkeys(problems))  # one line per problem, in order
 
 
 def get_runtime(hass: HomeAssistant, entry_id: str | None = None) -> Runtime:

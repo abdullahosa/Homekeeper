@@ -14,6 +14,11 @@
   "after_dependencies": [
     "mqtt",
     "conversation",
-    "tag"
+    "tag",
+    "frontend"
+  ],
+  "dependencies": [
+    "http",
+    "websocket_api"
   ]
 }

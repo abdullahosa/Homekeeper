@@ -1,0 +1,64 @@
+# Homekeeper dashboard. Paste into a dashboard's raw configuration editor
+# (Settings > Dashboards > your dashboard > three dots > Raw configuration editor),
+# or create a new dashboard and paste it there.
+#
+# The card loads by itself once the integration is set up. If a card shows
+# "Custom element doesn't exist", hard-refresh the browser once.
+#
+# Entity ids below use the default module ids (bills, rental, home, lawn).
+# Delete the lines for modules you do not use.
+title: Homekeeper
+views:
+  - title: Today
+    path: today
+    icon: mdi:home-heart
+    cards:
+      - type: custom:homekeeper-card
+        title: Homekeeper
+        mode: list
+        # person: me      # uncomment to show only the logged-in person's duties
+        # language: ar    # force Arabic; the default follows the user's profile language
+
+  - title: Wall panel
+    path: wall
+    icon: mdi:tablet-dashboard
+    panel: true          # one card, full screen; use with Kiosk Mode on the tablet
+    cards:
+      - type: custom:homekeeper-card
+        title: Home
+        mode: wall
+        horizon_days: 7
+
+  - title: Lists
+    path: lists
+    icon: mdi:format-list-checks
+    cards:
+      - type: todo-list
+        entity: todo.homekeeper_bills
+      - type: todo-list
+        entity: todo.homekeeper_rental
+      - type: todo-list
+        entity: todo.homekeeper_home
+      - type: todo-list
+        entity: todo.homekeeper_lawn
+      - type: calendar
+        entities:
+          - calendar.homekeeper_schedule
+
+  - title: Admin
+    path: admin
+    icon: mdi:shield-account
+    # Only people with admin access should see this view.
+    visible:
+      - user: REPLACE_WITH_YOUR_USER_ID
+    cards:
+      - type: entities
+        title: Health
+        entities:
+          - binary_sensor.homekeeper_healthy
+          - sensor.homekeeper_overdue
+      - type: custom:homekeeper-card
+        title: Everything, everyone
+        mode: list
+        horizon_days: 60
+        confirm: true

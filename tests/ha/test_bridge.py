@@ -15,7 +15,7 @@ def bill(status="due", due="2026-12-10", amount=120.5, arrived="2026-11-20", **k
 
 async def start(hass, entry):
     assert await hass.config_entries.async_setup(entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)  # the bridge starts in the background
     return get_runtime(hass, entry.entry_id)
 
 
@@ -44,7 +44,7 @@ async def test_bill_posted_opens_duty_notifies_owner_with_amount(
     freezer.move_to("2026-11-21 09:00:00")
     rt = await start(hass, bill_entry())
     async_fire_mqtt_message(hass, "billbot/duke_energy/state", bill())
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
     assert rt.engine.occurrences["bill-duke"].due.isoformat() == "2026-12-10"
     sent = {c.service: c.data for c in notify_calls}
     assert set(sent) == {"mobile_b"}  # the biller's owner only
@@ -62,7 +62,7 @@ async def test_marking_paid_in_homekeeper_presses_billbot_button(
     freezer.move_to("2026-11-21 09:00:00")
     rt = await start(hass, bill_entry())
     async_fire_mqtt_message(hass, "billbot/duke_energy/state", bill())
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
     await hass.services.async_call(
         DOMAIN, "complete", {"duty_id": "bill-duke", "by": "b"}, blocking=True
     )
@@ -74,17 +74,17 @@ async def test_paid_by_billbot_closes_without_pressing_again(hass, mqtt_mock, bi
     freezer.move_to("2026-11-21 09:00:00")
     rt = await start(hass, bill_entry())
     async_fire_mqtt_message(hass, "billbot/duke_energy/state", bill())
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
     async_fire_mqtt_message(
         hass, "billbot/duke_energy/state", bill("paid", paid="2026-12-01", paid_amount=120.5)
     )
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
     assert "bill-duke" not in rt.engine.occurrences
     assert rt.engine.history[-1].method == "auto"
     assert not published(mqtt_mock, "billbot/duke_energy/mark_paid")
     # a replay of the old retained state does not reopen it
     async_fire_mqtt_message(hass, "billbot/duke_energy/state", bill())
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
     assert "bill-duke" not in rt.engine.occurrences
 
 
@@ -97,7 +97,7 @@ async def test_rent_payment_completes_rent_check(hass, mqtt_mock, bill_entry, fr
         json.dumps({"status": "paid", "due_date": "2026-11-30", "paid": "2026-11-30",
                     "amount": 2000, "arrived": None}),
     )
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
     assert rt.engine.occurrences["rent-check"].due.isoformat() == "2026-12-15"
     assert rt.engine.history[-1].method == "auto"
 
@@ -109,7 +109,7 @@ async def test_garbage_and_unknown_messages_are_ignored(hass, mqtt_mock, bill_en
     async_fire_mqtt_message(hass, "billbot/duke_energy/state", "[1,2]")
     async_fire_mqtt_message(hass, "billbot/some_other_biller/state", bill())
     async_fire_mqtt_message(hass, "billbot/duke_energy/state", json.dumps({"status": "due", "due_date": "garbage"}))
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
     assert "bill-duke" not in rt.engine.occurrences
     assert hass.states.get("binary_sensor.homekeeper_healthy").state == "on"
 
@@ -119,11 +119,11 @@ async def test_billbot_offline_and_silent_biller_trip_health(hass, mqtt_mock, bi
     rt = await start(hass, bill_entry())
     assert hass.states.get("binary_sensor.homekeeper_healthy").state == "on"
     async_fire_mqtt_message(hass, "billbot/status", "offline")
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
     state = hass.states.get("binary_sensor.homekeeper_healthy")
     assert state.state == "off" and "billbot_offline" in state.attributes["problems"]
     async_fire_mqtt_message(hass, "billbot/status", "online")
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
     assert hass.states.get("binary_sensor.homekeeper_healthy").state == "on"
     freezer.move_to("2027-02-01 09:00:00")  # months with no bill from Duke
     assert "biller_silent:duke" in rt.health_problems()
@@ -144,7 +144,7 @@ async def test_add_biller_via_ui_republishes_list(hass, mqtt_mock, bill_entry, f
          "remind": "-3d,0d", "escalate_after": "2d", "enabled": True},
     )
     assert r["type"].value == "create_entry"
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
     rt = get_runtime(hass, entry.entry_id)
     assert "gas" in rt.engine.billers
     last = json.loads(published(mqtt_mock, "homekeeper/billers")[-1][1])
@@ -152,7 +152,7 @@ async def test_add_biller_via_ui_republishes_list(hass, mqtt_mock, bill_entry, f
     # removing it again drops the domain
     sub = next(s for s in entry.subentries.values() if s.data["id"] == "gas")
     hass.config_entries.async_remove_subentry(entry, sub.subentry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
     last = json.loads(published(mqtt_mock, "homekeeper/billers")[-1][1])
     assert "enbridgegas.com" not in last["billers"]
 
@@ -168,7 +168,7 @@ async def test_bills_pack_imports_billers_as_subentries(hass, mqtt_mock, bill_en
     out = await hass.services.async_call(
         DOMAIN, "import_pack", {"pack": text}, blocking=True, return_response=True)
     assert out["applied"] and "biller:electric" in out["created"]
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
     rt = get_runtime(hass, entry.entry_id)
     assert {"electric", "water", "internet", "duke"} <= set(rt.engine.billers)
     assert "bill-electric" in rt.engine.duties
@@ -183,9 +183,9 @@ async def test_state_survives_reload(hass, mqtt_mock, bill_entry, freezer):
     entry = bill_entry()
     await start(hass, entry)
     async_fire_mqtt_message(hass, "billbot/duke_energy/state", bill())
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
     assert await hass.config_entries.async_reload(entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
     rt = get_runtime(hass, entry.entry_id)
     occ = rt.engine.occurrences["bill-duke"]
     assert occ.due.isoformat() == "2026-12-10" and occ.meta["amount"] == 120.5

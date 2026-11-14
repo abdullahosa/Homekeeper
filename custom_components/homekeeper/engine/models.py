@@ -23,6 +23,7 @@ class Person:
     language: str = "en"  # en | ar
     notify: str | None = None
     ha_user: str | None = None
+    person_entity: str | None = None  # e.g. person.alex; links a login to this person
     quiet_hours: list[str] | None = None  # ["22:00", "07:00"]
 
     def to_dict(self) -> dict[str, Any]:

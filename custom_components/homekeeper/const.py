@@ -19,3 +19,7 @@ ACTION_PREFIX = "HK|"  # mobile-app action id: HK|<verb>|<duty_id>|<person_id>
 PLATFORMS = ["todo", "calendar", "sensor", "binary_sensor"]
 
 SIGNAL_UPDATE = "homekeeper_update_{entry_id}"
+
+EVENT_CHANGED = "homekeeper_changed"  # fired whenever the card should refresh
+STATIC_URL = "/homekeeper_static"
+CARD_FILE = "homekeeper-card.js"

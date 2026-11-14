@@ -160,6 +160,7 @@ class PersonFlow(_BaseSubentryFlow):
                     "language": user_input["language"],
                     "notify": user_input.get("notify") or None,
                     "ha_user": None,
+                    "person_entity": user_input.get("person_entity") or None,
                     "quiet_hours": quiet or None,
                 }
                 return self._finish(user_input["name"], data, ident)
@@ -175,6 +176,9 @@ class PersonFlow(_BaseSubentryFlow):
                 ),
                 vol.Required("language", default=old.get("language", "en")): _select(["en", "ar"]),
                 vol.Optional("notify", default=old.get("notify") or ""): _text(),
+                vol.Optional(
+                    "person_entity", description={"suggested_value": old.get("person_entity")}
+                ): selector.EntitySelector(selector.EntitySelectorConfig(domain="person")),
                 vol.Optional("quiet_start", default=quiet[0]): _text(),
                 vol.Optional("quiet_end", default=quiet[1]): _text(),
             }
