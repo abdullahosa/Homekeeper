@@ -13,6 +13,7 @@ from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from . import messages
+from .bridge import BillBotBridge
 from .const import (
     ACTION_PREFIX,
     CONF_CONDITIONS,
@@ -21,11 +22,12 @@ from .const import (
     SIGNAL_UPDATE,
     STORAGE_KEY,
     STORAGE_VERSION,
+    SUBENTRY_BILLER,
     SUBENTRY_DUTY,
     SUBENTRY_MODULE,
     SUBENTRY_PERSON,
 )
-from .engine import Duty, Engine, Module, Notification, Person, TickResult
+from .engine import Biller, Duty, Engine, Module, Notification, Person, TickResult
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -67,6 +69,7 @@ class Runtime:
         self._saved_occurrences: dict[str, dict[str, Any]] = {}
         self.signature: tuple = ()
         self.importing = False
+        self.bridge = BillBotBridge(self)
 
     # ------------------------------------------------------------ lifecycle
     async def async_load(self) -> None:
@@ -74,7 +77,8 @@ class Runtime:
         self.engine.history = Engine.from_dict(
             {"history": saved.get("history", [])}
         ).history
-        self.engine.billers = dict(saved.get("billers", {}))
+        self.engine.biller_seen = dict(saved.get("biller_seen", {}))
+        self.engine.biller_since = dict(saved.get("biller_since", {}))
         saved_occ = {o["duty_id"]: o for o in saved.get("occurrences", [])}
         self._saved_occurrences = saved_occ
         self.sync_definitions()
@@ -94,6 +98,21 @@ class Runtime:
                 eng.modules[module.id] = module
         wanted: dict[str, Duty] = {}
         self.invalid = []
+        billers: dict[str, Biller] = {}
+        for sub in self.entry.subentries.values():
+            if sub.subentry_type == SUBENTRY_BILLER:
+                try:
+                    biller = Biller.from_dict(dict(sub.data))
+                except (TypeError, KeyError, ValueError) as err:
+                    self.invalid.append(f"{sub.title}: {err}")
+                    continue
+                billers[biller.id] = biller
+                duty = eng.biller_duty(biller)
+                if duty is not None:
+                    wanted[duty.id] = duty
+        eng.billers = billers
+        for biller in billers.values():
+            eng.biller_since.setdefault(biller.id, today.isoformat())
         self.signature = self.compute_signature()
         for sub in self.entry.subentries.values():
             if sub.subentry_type == SUBENTRY_DUTY:
@@ -147,7 +166,8 @@ class Runtime:
         return {
             "occurrences": full["occurrences"],
             "history": full["history"],
-            "billers": full["billers"],
+            "biller_seen": full["biller_seen"],
+            "biller_since": full["biller_since"],
         }
 
     async def async_save_now(self) -> None:
@@ -183,6 +203,12 @@ class Runtime:
                     "detail": event.detail,
                 },
             )
+        for event in result.events:
+            if event.type != "completed" or event.method in ("", "auto"):
+                continue
+            duty = self.engine.duties.get(event.duty_id)
+            if duty is not None and duty.biller:
+                await self.bridge.async_press_mark_paid(duty.biller)
         for note in result.notifications:
             for person_id in note.recipients:
                 self.queue.append((person_id, note))
@@ -211,10 +237,13 @@ class Runtime:
         occ = self.engine.occurrences.get(note.duty_id)
         lang = person.language
         by = self.engine.people[note.detail].name if note.kind == "not_mine" and note.detail in self.engine.people else note.detail
+        title_text = duty.display_title(lang)
+        if occ and occ.meta.get("amount") is not None:
+            title_text += f" (${float(occ.meta['amount']):,.2f})"
         body = messages.text(
             note.kind,
             lang,
-            title=duty.display_title(lang),
+            title=title_text,
             due=occ.due.isoformat() if occ else "",
             by=by,
         )
@@ -274,9 +303,14 @@ class Runtime:
         )
 
     def health_problems(self) -> list[str]:
-        problems = list(self.engine.health()) + list(self.invalid)
+        problems = list(self.engine.health(dt_util.now().date())) + list(self.invalid)
         if self.last_tick is None:
             problems.append("never_ticked")
+        if self.engine.billers:
+            if not self.bridge.mqtt_ready:
+                problems.append("mqtt_unavailable")
+            elif self.bridge.available is False:
+                problems.append("billbot_offline")
         return problems
 
 

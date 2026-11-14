@@ -7,7 +7,7 @@ from datetime import date
 from typing import Any
 
 from .core import Engine
-from .models import Duty, Module
+from .models import Biller, Duty, Module
 
 
 @dataclass
@@ -61,17 +61,20 @@ def _apply(
         report.created.append(f"module:{mid}")
     else:
         report.unchanged.append(f"module:{mid}")
-    for biller in pack.get("billers", []):
-        key = f"biller:{biller['id']}"
-        record = {**biller, "module": mid}
-        if biller["id"] not in engine.billers:
-            engine.billers[biller["id"]] = record
-            report.created.append(key)
-        elif overwrite and engine.billers[biller["id"]] != record:
-            engine.billers[biller["id"]] = record
-            report.updated.append(key)
-        else:
-            report.unchanged.append(key)
+    for raw_biller in pack.get("billers", []):
+        key = f"biller:{raw_biller.get('id')}"
+        try:
+            biller = Biller.from_dict({"module": mid, **raw_biller})
+            if biller.id not in engine.billers:
+                engine.add_biller(biller, today)
+                report.created.append(key)
+            elif overwrite and engine.billers[biller.id].to_dict() != biller.to_dict():
+                engine.add_biller(biller, today)
+                report.updated.append(key)
+            else:
+                report.unchanged.append(key)
+        except (ValueError, KeyError, TypeError) as err:
+            report.errors.append(f"{key}: {err}")
     for raw in pack.get("duties", []):
         key = f"duty:{raw.get('id')}"
         try:
@@ -92,8 +95,8 @@ def export_pack(engine: Engine, module_id: str) -> dict[str, Any]:
     module = engine.modules[module_id]
     duties = []
     for duty in engine.duties.values():
-        if duty.module != module_id:
-            continue
+        if duty.module != module_id or duty.biller:
+            continue  # biller duties are exported via their biller
         item = duty.to_dict()
         item.pop("module")
         duties.append(item)
@@ -102,9 +105,9 @@ def export_pack(engine: Engine, module_id: str) -> dict[str, Any]:
         "title": module.title,
         "owners": module.owners,
         "billers": [
-            {k: v for k, v in b.items() if k != "module"}
+            {k: v for k, v in b.to_dict().items() if k != "module"}
             for b in engine.billers.values()
-            if b.get("module") == module_id
+            if b.module == module_id
         ],
         "duties": duties,
     }

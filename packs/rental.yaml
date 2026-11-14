@@ -3,9 +3,11 @@ module: rental
 title: {en: Rental property}
 billers:
   - id: rent
-    title: {en: Rent received}
+    name: Rent payments   # the name BillBot files the payment emails under
     kind: income
     cadence_days: 15
+    grace_days: 5
+    completes: [rent-check]
     sender_domains: [example-payments.com]
 duties:
   - id: rent-check

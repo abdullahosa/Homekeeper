@@ -7,7 +7,7 @@ from datetime import date, datetime
 from typing import Any
 
 from . import schedule as sch
-from .models import Duty, HistoryEntry, Module, Occurrence, Person
+from .models import Biller, Duty, HistoryEntry, Module, Occurrence, Person
 
 DONE_METHODS = ("button", "nfc", "voice", "auto")
 DEFAULT_EARLY_DAYS = 30
@@ -20,6 +20,7 @@ class Event:
     occurrence_id: str
     by: str | None = None
     detail: str = ""
+    method: str = ""
 
 
 @dataclass
@@ -44,7 +45,9 @@ class Engine:
         self.duties: dict[str, Duty] = {}
         self.occurrences: dict[str, Occurrence] = {}  # one open occurrence per duty
         self.history: list[HistoryEntry] = []
-        self.billers: dict[str, dict[str, Any]] = {}
+        self.billers: dict[str, Biller] = {}
+        self.biller_seen: dict[str, str] = {}  # biller id -> ISO date of newest bill/payment
+        self.biller_since: dict[str, str] = {}  # biller id -> ISO date it was added
 
     # ---------------------------------------------------------------- setup
     def add_person(self, person: Person) -> None:
@@ -294,7 +297,7 @@ class Engine:
     ) -> None:
         self.history.append(HistoryEntry(duty.id, occ.due, kind, today, by, method, note))
         result.events.append(
-            Event("completed" if kind == "done" else "skipped", duty.id, occ.id, by, note)
+            Event("completed" if kind == "done" else "skipped", duty.id, occ.id, by, note, method)
         )
         self.occurrences.pop(duty.id, None)
         self._spawn(duty, sch.next_window(duty.schedule, occ.due, today))
@@ -309,19 +312,134 @@ class Engine:
         if duty_id not in self.occurrences:
             due = sch.add_duration(today, duty.schedule.get("due_in", "0d"))
             self.occurrences[duty_id] = Occurrence(duty_id=duty_id, due=due, opens=today)
-        for target in duty.schedule.get("completes", []):
-            if target in self.occurrences and target in self.duties:
-                self._advance(
-                    self.duties[target],
-                    self.occurrences[target],
-                    today,
-                    "done",
-                    None,
-                    "auto",
-                    f"signal:{duty_id}",
-                    result,
-                )
+        self._complete_targets(
+            duty.schedule.get("completes", []), today, f"signal:{duty_id}", result
+        )
         return result
+
+
+    def _complete_targets(
+        self,
+        targets: list[str],
+        today: date,
+        note: str,
+        result: TickResult,
+        paid_on: date | None = None,
+        lead_days: int = 7,
+    ) -> None:
+        """Auto-complete the open occurrences of `targets`. With `paid_on`, only those
+        due no more than `lead_days` after that date, so an old payment can't close a
+        fresh occurrence."""
+        for target in targets:
+            occ = self.occurrences.get(target)
+            duty = self.duties.get(target)
+            if occ is None or duty is None:
+                continue
+            if paid_on is not None and (occ.due - paid_on).days > lead_days:
+                continue
+            self._advance(duty, occ, today, "done", None, "auto", note, result)
+
+    # --------------------------------------------------------------- billers
+    @staticmethod
+    def biller_duty_id(biller_id: str) -> str:
+        return f"bill-{biller_id}"
+
+    def biller_duty(self, biller: Biller) -> Duty | None:
+        """The 'pay this bill' duty for a bill-kind biller; None for income billers."""
+        if biller.kind != "bill":
+            return None
+        title = dict(biller.title) or {
+            "en": f"Pay {biller.name}",
+            "ar": f"سداد فاتورة {biller.name}",
+        }
+        return Duty(
+            id=self.biller_duty_id(biller.id),
+            module=biller.module,
+            title=title,
+            schedule={"type": "signal"},
+            owners=list(biller.owners),
+            observers=list(biller.observers),
+            remind=list(biller.remind),
+            escalate=[dict(e) for e in biller.escalate],
+            how_to=f"Bill from {biller.name}. Marking it done also presses BillBot's Mark paid.",
+            done_by=["button", "nfc", "voice", "auto"],
+            enabled=biller.enabled,
+            biller=biller.id,
+        )
+
+    def add_biller(self, biller: Biller, today: date) -> None:
+        self.billers[biller.id] = biller
+        self.biller_since.setdefault(biller.id, today.isoformat())
+        duty = self.biller_duty(biller)
+        if duty is None:
+            return
+        if duty.id in self.duties:
+            self.update_duty(duty, today)
+        else:
+            self.add_duty(duty, today)
+
+    def _seen(self, biller_id: str, day: str) -> None:
+        if day > self.biller_seen.get(biller_id, ""):
+            self.biller_seen[biller_id] = day
+
+    def apply_bill_state(self, biller_id: str, payload: dict[str, Any], now: datetime) -> TickResult:
+        """Apply one BillBot state message (billbot/<biller>/state). Idempotent: a
+        retained message replayed after a restart changes nothing."""
+        result = TickResult()
+        biller = self.billers.get(biller_id)
+        if biller is None or not biller.enabled:
+            return result
+        today = now.date()
+        status = payload.get("status")
+        if biller.kind == "income":
+            return self._income_state(biller, payload, today, result)
+        duty = self.duties.get(self.biller_duty_id(biller.id))
+        due_text = payload.get("due_date")
+        if duty is None or not due_text or status not in ("due", "overdue", "autopay", "paid"):
+            return result
+        if payload.get("arrived"):
+            self._seen(biller.id, payload["arrived"])
+        due = date.fromisoformat(due_text)
+        occ = self.occurrences.get(duty.id)
+        if status in ("due", "overdue"):
+            if any(h.duty_id == duty.id and h.occurrence_due == due for h in self.history):
+                return result
+            meta = {
+                k: payload[k] for k in ("amount", "arrived", "autopay") if payload.get(k) is not None
+            }
+            if occ is not None and occ.due == due:
+                occ.meta.update(meta)
+                return result
+            if occ is not None:
+                self._advance(duty, occ, today, "skipped", None, "auto", "superseded", result)
+            self.occurrences[duty.id] = Occurrence(
+                duty_id=duty.id, due=due, opens=min(today, due), meta=meta
+            )
+        elif occ is not None and occ.due == due:
+            note = "autopay" if status == "autopay" else f"paid {payload.get('paid') or ''}".strip()
+            self._advance(duty, occ, today, "done", None, "auto", note, result)
+        return result
+
+    def _income_state(
+        self, biller: Biller, payload: dict[str, Any], today: date, result: TickResult
+    ) -> TickResult:
+        if payload.get("status") != "paid":
+            return result
+        paid = payload.get("paid") or payload.get("due_date")
+        if not paid or paid <= self.biller_seen.get(biller.id, ""):
+            return result
+        self._seen(biller.id, paid)
+        self._complete_targets(
+            biller.completes,
+            today,
+            f"income:{biller.id}",
+            result,
+            paid_on=date.fromisoformat(paid),
+        )
+        return result
+
+    def mark_biller_seen(self, biller_id: str, day: date) -> None:
+        self._seen(biller_id, day.isoformat())
 
     def not_mine(self, duty_id: str, by: str, today: date) -> Notification:
         duty = self.duties[duty_id]
@@ -357,11 +475,18 @@ class Engine:
         return out
 
     # ------------------------------------------------------------ reports
-    def health(self) -> list[str]:
+    def health(self, today: date | None = None) -> list[str]:
         problems = []
         for duty in self.duties.values():
             if duty.enabled and not self.effective_owners(duty):
                 problems.append(f"no_owner:{duty.id}")
+        if today is not None:
+            for b in self.billers.values():
+                if not b.enabled or not b.cadence_days:
+                    continue
+                last = self.biller_seen.get(b.id) or self.biller_since.get(b.id)
+                if last and (today - date.fromisoformat(last)).days > b.cadence_days + b.grace_days:
+                    problems.append(f"biller_silent:{b.id}")
         return problems
 
     def digest(self, today: date, days: int = 7) -> dict[str, list[str]]:
@@ -382,7 +507,9 @@ class Engine:
             "duties": [d.to_dict() for d in self.duties.values()],
             "occurrences": [o.to_dict() for o in self.occurrences.values()],
             "history": [h.to_dict() for h in self.history],
-            "billers": self.billers,
+            "billers": {k: b.to_dict() for k, b in self.billers.items()},
+            "biller_seen": dict(self.biller_seen),
+            "biller_since": dict(self.biller_since),
         }
 
     @classmethod
@@ -399,5 +526,7 @@ class Engine:
             occ = Occurrence.from_dict(o)
             eng.occurrences[occ.duty_id] = occ
         eng.history = [HistoryEntry.from_dict(h) for h in data.get("history", [])]
-        eng.billers = dict(data.get("billers", {}))
+        eng.billers = {k: Biller.from_dict(v) for k, v in data.get("billers", {}).items()}
+        eng.biller_seen = dict(data.get("biller_seen", {}))
+        eng.biller_since = dict(data.get("biller_since", {}))
         return eng

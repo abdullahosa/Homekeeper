@@ -62,3 +62,57 @@ def notify_calls(hass):
     for name in ("mobile_adm", "mobile_a", "mobile_b"):
         hass.services.async_register("notify", name, handler)
     return calls
+
+
+@pytest.fixture
+def bill_entry(hass, entry_factory):
+    """The standard entry plus a Bills module and two billers (one bill, one income)."""
+    def make():
+        return entry_factory(
+            extra=(
+                sub("module", "bills", {"title": {"en": "Bills"}, "owners": ["a"]}),
+                sub("module", "rental", {"title": {"en": "Rental"}, "owners": ["a"]}),
+                sub(
+                    "biller",
+                    "duke",
+                    {
+                        "name": "Duke Energy",
+                        "kind": "bill",
+                        "module": "bills",
+                        "sender_domains": ["duke-energy.com", "dukeenergy.com"],
+                        "owners": ["b"],
+                        "cadence_days": 31,
+                        "grace_days": 7,
+                        "remind": ["-3d", "0d"],
+                        "escalate": [{"after": "2d", "notify": ["admin"]}],
+                    },
+                    "Duke Energy",
+                ),
+                sub(
+                    "biller",
+                    "rent",
+                    {
+                        "name": "Rent payments",
+                        "kind": "income",
+                        "module": "rental",
+                        "sender_domains": ["zillow.com"],
+                        "completes": ["rent-check"],
+                        "cadence_days": 15,
+                    },
+                    "Rent payments",
+                ),
+                sub(
+                    "duty",
+                    "rent-check",
+                    {
+                        "module": "rental",
+                        "title": {"en": "Confirm rent received"},
+                        "schedule": {"type": "day_of_month", "days": [1, 15]},
+                        "done_by": ["button", "auto"],
+                    },
+                    "Confirm rent received",
+                ),
+            )
+        )
+
+    return make

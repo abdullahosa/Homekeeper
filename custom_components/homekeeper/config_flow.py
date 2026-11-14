@@ -20,11 +20,12 @@ from homeassistant.helpers import selector
 from .const import (
     CONF_CONDITIONS,
     DOMAIN,
+    SUBENTRY_BILLER,
     SUBENTRY_DUTY,
     SUBENTRY_MODULE,
     SUBENTRY_PERSON,
 )
-from .engine import Duty
+from .engine import Biller, Duty
 from .engine import schedule as sch
 
 SLUG = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
@@ -94,6 +95,7 @@ class HomekeeperConfigFlow(ConfigFlow, domain=DOMAIN):
             SUBENTRY_PERSON: PersonFlow,
             SUBENTRY_MODULE: ModuleFlow,
             SUBENTRY_DUTY: DutyFlow,
+            SUBENTRY_BILLER: BillerFlow,
         }
 
 
@@ -413,4 +415,79 @@ class DutyFlow(_BaseSubentryFlow):
         }
         return self.async_show_form(
             step_id="details", data_schema=vol.Schema(fields), errors=errors
+        )
+
+
+class BillerFlow(_BaseSubentryFlow):
+    """A sender BillBot reads: a bill to pay, or income (rent) to expect."""
+
+    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
+        entry = self._get_entry()
+        old = self._existing()
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            ident = old.get("id") or user_input["id"]
+            if not SLUG.match(ident):
+                errors["id"] = "bad_id"
+            elif not old and ident in _ids(entry, SUBENTRY_BILLER):
+                errors["id"] = "id_exists"
+            try:
+                remind = _csv(user_input.get("remind"))
+                for off in remind:
+                    sch.parse_duration(off)
+                escalate = []
+                if user_input.get("escalate_after"):
+                    sch.parse_duration(user_input["escalate_after"])
+                    escalate = [{"after": user_input["escalate_after"], "notify": ["admin"]}]
+                cadence = int(user_input["cadence_days"]) if user_input.get("cadence_days") else None
+                grace = int(user_input.get("grace_days") or 5)
+            except ValueError:
+                errors["base"] = "bad_details"
+            if not errors:
+                data = Biller(
+                    id=ident,
+                    name=user_input["name"].strip(),
+                    kind=user_input["kind"],
+                    module=user_input["module"],
+                    sender_domains=[d.lower() for d in _csv(user_input.get("sender_domains"))],
+                    owners=user_input.get("owners", []),
+                    observers=user_input.get("observers", []),
+                    cadence_days=cadence,
+                    grace_days=grace,
+                    completes=_csv(user_input.get("completes")),
+                    remind=remind,
+                    escalate=escalate,
+                    enabled=user_input.get("enabled", True),
+                ).to_dict()
+                return self._finish(data["name"], data, ident)
+        esc = old.get("escalate") or []
+        fields: dict[Any, Any] = {}
+        if not old:
+            fields[vol.Required("id")] = _text()
+        fields.update(
+            {
+                vol.Required("name", default=old.get("name", "")): _text(),
+                vol.Required("kind", default=old.get("kind", "bill")): _select(["bill", "income"]),
+                vol.Required("module", default=old.get("module", "bills")): _select(_modules(entry)),
+                vol.Optional("sender_domains", default=",".join(old.get("sender_domains", []))): _text(),
+                vol.Optional("owners", default=old.get("owners", [])): _select(
+                    _people(entry), multiple=True
+                ),
+                vol.Optional("observers", default=old.get("observers", [])): _select(
+                    _people(entry), multiple=True
+                ),
+                vol.Optional("cadence_days", default=str(old.get("cadence_days") or "")): _text(),
+                vol.Optional("grace_days", default=str(old.get("grace_days", 5))): _text(),
+                vol.Optional("completes", default=",".join(old.get("completes", []))): _text(),
+                vol.Optional(
+                    "remind", default=",".join(old.get("remind", ["-3d", "0d"]))
+                ): _text(),
+                vol.Optional(
+                    "escalate_after", default=esc[0]["after"] if esc else "2d"
+                ): _text(),
+                vol.Optional("enabled", default=old.get("enabled", True)): selector.BooleanSelector(),
+            }
+        )
+        return self.async_show_form(
+            step_id="user", data_schema=vol.Schema(fields), errors=errors
         )

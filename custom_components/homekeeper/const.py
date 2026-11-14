@@ -8,6 +8,7 @@ STORAGE_VERSION = 1
 SUBENTRY_PERSON = "person"
 SUBENTRY_MODULE = "module"
 SUBENTRY_DUTY = "duty"
+SUBENTRY_BILLER = "biller"
 
 CONF_CONDITIONS = "conditions"  # "key=sensor.entity, key2=sensor.other"
 TICK_INTERVAL_MINUTES = 5
