@@ -98,11 +98,14 @@ Mobile push per person, in their language. Actions: **Done**, **Snooze 1 day**, 
 
 ## 5. BillBot interface
 
-- Homekeeper publishes a retained MQTT message on `homekeeper/billers`: a list of `{name, sender_domains, kind}` where kind is `bill` or `income`.
-- BillBot subscribes and uses it instead of its local `billers.json`. Falling back to the local file if the message is absent.
-- BillBot continues to publish its discovery entities and the `Bill posted` event. Homekeeper listens and opens the matching duty, then closes it when the payment matches.
-- Expected-cadence check: each biller declares how often it should post. If no bill arrives in cadence plus grace, the health sensor reports it.
-- Mosquitto ACL: Homekeeper may publish on `homekeeper/#`; BillBot may read it and nothing more.
+Implemented. BillBot reads, Homekeeper runs.
+
+- A **biller** is a config subentry: name as BillBot files it, kind (`bill` or `income`), sender domains, owners, expected cadence and grace, reminders, escalation. A `bill` biller becomes a "Pay ..." duty (`bill-<id>`); an `income` biller lists the duties it completes (rent).
+- Homekeeper publishes a retained `homekeeper/billers` message (`{"version":1,"billers":{domain:name}}`). An optional BillBot add-on (`billbot/`) reads it, so billers are managed in Home Assistant only. Without the add-on BillBot keeps using `billers.json`.
+- Homekeeper subscribes to `billbot/+/state` and `billbot/status`. A `due`/`overdue` state opens the duty with the amount; `paid` or `autopay` closes it (method `auto`); a newer bill supersedes an unpaid older one; replayed retained messages change nothing. An income `paid` state completes the listed duties only when the payment is within 7 days of their due date.
+- Marking a bill done in Homekeeper (button, to-do, NFC, voice, service) presses BillBot's `billbot/<name>/mark_paid` so BillBot stays the source of truth. A payment BillBot detects closes the duty without pressing again.
+- Health reports `biller_silent:<id>` when no bill or payment arrived within cadence plus grace, `billbot_offline` when `billbot/status` is offline, and `mqtt_unavailable`.
+- Mosquitto ACL lines are in `billbot/BILLBOT-PATCH.md`.
 
 ## 6. Packs
 
@@ -136,11 +139,11 @@ Packs are YAML. They create duties, modules and billers idempotently (keyed by `
 
 ## 10. Build phases
 
-0. Repo skeleton, spec, packs. (this commit)
-1. Core engine: duties, schedules, occurrences, storage, pure Python with tests.
-2. HA integration: config flow, subentries, entities, services.
-3. Notifications, escalation, NFC, voice.
-4. BillBot bridge and biller subentries.
+0. Repo skeleton, spec, packs. (done)
+1. Core engine: duties, schedules, occurrences, storage, pure Python with tests. (done)
+2. HA integration: config flow, subentries, entities, services, notifications. (done)
+3. NFC tags and Assist voice.
+4. BillBot bridge and biller subentries. (done)
 5. Dashboard card, wall panel, packs polish, release via HACS.
 
 Gate: test on a spare HA instance first, then production before the move-out date.

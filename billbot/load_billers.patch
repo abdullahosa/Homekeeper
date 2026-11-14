@@ -1,0 +1,28 @@
+--- a/opt/billbot/billbot.py
++++ b/opt/billbot/billbot.py
+@@ -76,7 +76,7 @@
+     return db
+ 
+ 
+-def load_billers():
++def _load_local_billers():
+     path = Path(CONFIG["billers"])
+     if not path.exists():
+         return {}
+@@ -86,6 +86,16 @@
+         raise RuntimeError(f"{path} is not valid JSON: {e}") from None
+ 
+ 
++def load_billers():
++    """billers.json, plus the list Homekeeper publishes over MQTT when homekeeper_billers.py is present."""
++    local = _load_local_billers()
++    try:
++        import homekeeper_billers
++    except ImportError:
++        return local
++    return homekeeper_billers.from_env(local)
++
++
+ def biller_for(address, billers):
+     """Return (name, known). Exact address first, then the longest matching domain suffix.
+     Unknown senders are tracked under their domain."""

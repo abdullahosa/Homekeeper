@@ -12,7 +12,7 @@ from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.util import dt as dt_util
 
-from .const import DOMAIN, SUBENTRY_DUTY, SUBENTRY_MODULE
+from .const import DOMAIN, SUBENTRY_BILLER, SUBENTRY_DUTY, SUBENTRY_MODULE
 from .engine import Engine
 from .engine.packs import export_pack, import_pack, load_pack_text
 from .runtime import Runtime, get_runtime
@@ -200,12 +200,16 @@ def _apply_report(hass: HomeAssistant, rt: Runtime, trial: Engine, report) -> No
                 data = trial.modules[ident].to_dict()
                 stype = SUBENTRY_MODULE
                 title = data["title"].get("en") or ident
+            elif kind == "biller":
+                data = trial.billers[ident].to_dict()
+                stype = SUBENTRY_BILLER
+                title = trial.billers[ident].name
             elif kind == "duty":
                 data = trial.duties[ident].to_dict()
                 stype = SUBENTRY_DUTY
                 title = trial.duties[ident].display_title("en")
             else:
-                continue  # billers live in engine state for now
+                continue
             current = existing.get((stype, ident))
             if current is not None:
                 hass.config_entries.async_update_subentry(
@@ -221,7 +225,6 @@ def _apply_report(hass: HomeAssistant, rt: Runtime, trial: Engine, report) -> No
                         unique_id=f"{stype}:{ident}",
                     ),
                 )
-        rt.engine.billers = dict(trial.billers)
     except Exception as err:
         raise HomeAssistantError(f"Import failed: {err}") from err
     finally:

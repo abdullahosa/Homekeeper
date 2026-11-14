@@ -61,6 +61,7 @@ class Duty:
     done_by: list[str] = field(default_factory=lambda: ["button"])
     enabled: bool = True
     season: list[int] | None = None
+    biller: str | None = None  # set on duties synthesised from a Biller
 
     def display_title(self, language: str = "en") -> str:
         return self.title.get(language) or self.title.get("en") or self.id
@@ -87,6 +88,7 @@ class Occurrence:
     opened_notified: bool = False
     overdue_notified: bool = False
     last_state: str = "upcoming"
+    meta: dict[str, Any] = field(default_factory=dict)  # e.g. {"amount": 123.45}
 
     @property
     def id(self) -> str:
@@ -103,6 +105,7 @@ class Occurrence:
             "opened_notified": self.opened_notified,
             "overdue_notified": self.overdue_notified,
             "last_state": self.last_state,
+            "meta": dict(self.meta),
         }
 
     @classmethod
@@ -117,6 +120,7 @@ class Occurrence:
             opened_notified=data.get("opened_notified", False),
             overdue_notified=data.get("overdue_notified", False),
             last_state=data.get("last_state", "upcoming"),
+            meta=dict(data.get("meta", {})),
         )
 
 
@@ -152,3 +156,39 @@ class HistoryEntry:
             method=data.get("method", "button"),
             note=data.get("note", ""),
         )
+
+
+@dataclass
+class Biller:
+    """A sender BillBot reads. kind=bill opens a pay duty; kind=income (rent) completes
+    the duties named in `completes` when money arrives."""
+
+    id: str
+    name: str  # the name BillBot files the biller under, e.g. "Duke Energy"
+    kind: str = "bill"  # bill | income
+    module: str = "bills"
+    sender_domains: list[str] = field(default_factory=list)
+    owners: list[str] = field(default_factory=list)
+    observers: list[str] = field(default_factory=list)
+    cadence_days: int | None = None  # expected gap between bills; None = don't check
+    grace_days: int = 5
+    completes: list[str] = field(default_factory=list)
+    remind: list[str] = field(default_factory=lambda: ["-3d", "0d"])
+    escalate: list[dict[str, Any]] = field(
+        default_factory=lambda: [{"after": "2d", "notify": ["admin"]}]
+    )
+    title: dict[str, str] = field(default_factory=dict)
+    enabled: bool = True
+
+    def to_dict(self) -> dict[str, Any]:
+        return {f.name: getattr(self, f.name) for f in fields(self)}
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> Biller:
+        known = {f.name for f in fields(cls)}
+        biller = cls(**{k: v for k, v in data.items() if k in known})
+        if biller.kind not in ("bill", "income"):
+            raise ValueError(f"biller kind must be bill or income, not {biller.kind!r}")
+        if not biller.name:
+            raise ValueError("biller needs a name")
+        return biller

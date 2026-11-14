@@ -3,19 +3,25 @@ module: bills
 title: {en: Bills, ar: الفواتير}
 billers:
   - id: electric
-    title: {en: Electric bill}
+    name: Example Electric   # the name BillBot files this sender under
+    title: {en: Pay the electric bill, ar: سداد فاتورة الكهرباء}
     kind: bill
     cadence_days: 31
+    grace_days: 7
     sender_domains: [example-utility.com]
   - id: water
-    title: {en: Water bill}
+    name: Example Water
+    title: {en: Pay the water bill, ar: سداد فاتورة المياه}
     kind: bill
     cadence_days: 31
+    grace_days: 7
     sender_domains: [example-water.com]
   - id: internet
-    title: {en: Internet bill}
+    name: Example Internet
+    title: {en: Pay the internet bill, ar: سداد فاتورة الإنترنت}
     kind: bill
     cadence_days: 31
+    grace_days: 7
     sender_domains: [example-isp.com]
 duties:
   - id: bills-review

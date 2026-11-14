@@ -39,6 +39,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     entry.async_on_unload(entry.add_update_listener(_updated))
     await runtime.async_tick()
+    entry.async_on_unload(runtime.bridge.stop)
+    hass.async_create_background_task(
+        runtime.bridge.async_start(), f"{DOMAIN}_bridge_start"
+    )
     return True
 
 
@@ -52,6 +56,7 @@ async def _updated(hass: HomeAssistant, entry: ConfigEntry) -> None:
     runtime.sync_definitions()
     runtime.schedule_save()
     runtime.notify_entities()
+    await runtime.bridge.async_publish_billers()
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

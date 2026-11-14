@@ -136,6 +136,42 @@
       "abort": {
         "reconfigure_successful": "Saved."
       }
+    },
+    "biller": {
+      "initiate_flow": {
+        "user": "Add biller",
+        "reconfigure": "Edit biller"
+      },
+      "entry_type": "Biller",
+      "step": {
+        "user": {
+          "title": "Biller",
+          "description": "A sender BillBot reads. Bills open a pay duty. Income (like rent) completes the duties listed under Completes.",
+          "data": {
+            "id": "ID (short, no spaces)",
+            "name": "Name BillBot files it under (e.g. Duke Energy)",
+            "kind": "Kind",
+            "module": "Module",
+            "sender_domains": "Sender domains (comma separated, e.g. duke-energy.com)",
+            "owners": "Who pays",
+            "observers": "Extra observers",
+            "cadence_days": "Expected days between bills (blank = don't check)",
+            "grace_days": "Grace days before it is flagged as silent",
+            "completes": "Income only: duty IDs completed when money arrives",
+            "remind": "Remind (e.g. -3d,0d)",
+            "escalate_after": "Escalate to admins after overdue by (e.g. 2d)",
+            "enabled": "Enabled"
+          }
+        }
+      },
+      "error": {
+        "bad_id": "Use lowercase letters, numbers, - and _.",
+        "id_exists": "That ID is already used.",
+        "bad_details": "Check the numbers and reminder durations."
+      },
+      "abort": {
+        "reconfigure_successful": "Saved."
+      }
     }
   },
   "services": {
