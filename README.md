@@ -16,3 +16,7 @@ What it does: keeps recurring duties (lawn, rental, bills, home maintenance) fro
 Install: add this repository to HACS as a custom repository, then add the Homekeeper integration (see the install guide).
 
 This repository is public. Do not commit names, addresses, amounts or credentials.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
