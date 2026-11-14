@@ -1,5 +1,5 @@
 import pytest
-from homeassistant.config_entries import ConfigSubentryData
+from helpers import sub
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.homekeeper.const import DOMAIN
@@ -8,15 +8,6 @@ from custom_components.homekeeper.const import DOMAIN
 @pytest.fixture(autouse=True)
 def _enable(enable_custom_integrations):
     yield
-
-
-def sub(kind, ident, data, title=None):
-    return ConfigSubentryData(
-        data={"id": ident, **data},
-        subentry_type=kind,
-        title=title or ident,
-        unique_id=f"{kind}:{ident}",
-    )
 
 
 @pytest.fixture

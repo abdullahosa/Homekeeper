@@ -58,9 +58,10 @@ class Duty:
     remind: list[str] = field(default_factory=list)
     escalate: list[dict[str, Any]] = field(default_factory=list)
     how_to: str = ""
-    done_by: list[str] = field(default_factory=lambda: ["button"])
+    done_by: list[str] = field(default_factory=lambda: ["button", "nfc", "voice"])
     enabled: bool = True
     season: list[int] | None = None
+    nfc_tags: list[str] = field(default_factory=list)  # HA tag ids that complete this duty
     biller: str | None = None  # set on duties synthesised from a Biller
 
     def display_title(self, language: str = "en") -> str:

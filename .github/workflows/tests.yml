@@ -21,4 +21,12 @@ jobs:
         with:
           python-version: "3.14"
       - run: pip install pytest-homeassistant-custom-component
+      - name: Install Assist (conversation) requirements for the installed Home Assistant
+        run: |
+          python - <<'PY' > /tmp/ha-conv-reqs.txt
+          import json, pathlib, homeassistant
+          m = pathlib.Path(homeassistant.__file__).parent / 'components/conversation/manifest.json'
+          print('\n'.join(json.loads(m.read_text())['requirements']))
+          PY
+          pip install -r /tmp/ha-conv-reqs.txt
       - run: python -m pytest -q

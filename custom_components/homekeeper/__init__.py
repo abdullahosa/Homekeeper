@@ -2,17 +2,21 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import Event, HomeAssistant
 from homeassistant.helpers.event import async_track_time_interval
 
+from . import voice
 from .const import DOMAIN, PLATFORMS, TICK_INTERVAL_MINUTES
 from .runtime import Runtime
 from .services import async_register_services
 
 type HomekeeperConfigEntry = ConfigEntry
+
+_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -37,6 +41,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.async_on_unload(
         hass.bus.async_listen("mobile_app_notification_action", _action)
     )
+
+    async def _tag(event: Event) -> None:
+        await runtime.async_handle_tag(str(event.data.get("tag_id", "")))
+
+    entry.async_on_unload(hass.bus.async_listen("tag_scanned", _tag))
+    if "conversation" in hass.config.components:
+        try:
+            for unregister in voice.register(runtime):
+                entry.async_on_unload(unregister)
+        except Exception:  # noqa: BLE001 - voice is optional; never block setup
+            _LOGGER.warning("Could not register Assist sentences", exc_info=True)
     entry.async_on_unload(entry.add_update_listener(_updated))
     await runtime.async_tick()
     entry.async_on_unload(runtime.bridge.stop)

@@ -28,4 +28,3 @@ duties:
     title: {en: Review bills and confirm all are paid}
     schedule: {type: day_of_month, days: [1]}
     remind: [0d]
-    done_by: [button]

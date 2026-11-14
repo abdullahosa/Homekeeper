@@ -12,6 +12,8 @@
   "requirements": [],
   "version": "0.0.1",
   "after_dependencies": [
-    "mqtt"
+    "mqtt",
+    "conversation",
+    "tag"
   ]
 }
