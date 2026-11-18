@@ -126,6 +126,14 @@
             "enabled": "Enabled",
             "nfc_tags": "NFC tag IDs that complete this (comma separated; from Settings > Tags)"
           }
+        },
+        "first_module": {
+          "title": "First, a module",
+          "description": "Duties live in modules (like Bills, Lawn or Home). You don't have one yet, so make it here.",
+          "data": {
+            "module_name": "Module name",
+            "owners": "Default owners"
+          }
         }
       },
       "error": {
@@ -135,8 +143,7 @@
         "bad_details": "Check the reminder durations and months."
       },
       "abort": {
-        "reconfigure_successful": "Saved.",
-        "no_modules": "Add a module first (for example Bills or Lawn), or import a pack, then add this."
+        "reconfigure_successful": "Saved."
       }
     },
     "biller": {
@@ -164,6 +171,14 @@
             "escalate_after": "Escalate to admins after overdue by (e.g. 2d)",
             "enabled": "Enabled"
           }
+        },
+        "first_module": {
+          "title": "First, a module",
+          "description": "Duties live in modules (like Bills, Lawn or Home). You don't have one yet, so make it here.",
+          "data": {
+            "module_name": "Module name",
+            "owners": "Default owners"
+          }
         }
       },
       "error": {
@@ -172,8 +187,7 @@
         "bad_details": "Check the numbers and reminder durations."
       },
       "abort": {
-        "reconfigure_successful": "Saved.",
-        "no_modules": "Add a module first (for example Bills or Lawn), or import a pack, then add this."
+        "reconfigure_successful": "Saved."
       }
     }
   },
