@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- A **Homekeeper** page in the sidebar (admins only) shows People, Modules, Duties and Billers in collapsible sections, with what each row still needs: no phone for notifications, no owner, an empty module, an income biller that completes nothing. Sections with something to do start open and finished ones start closed; Expand all and Collapse all are at the top, and your choices are remembered. Adding and editing still happens on the integration page, one tap away.
 - The list of people, modules, duties and billers on the integration page is now grouped by kind: rows are titled "Person · Dad", "Module · Lawn", "Duty · Lawn · Mow the lawn" and "Biller · Duke Energy". Existing rows are renamed on the next restart, and duties follow when their module is renamed.
 - Adding a duty or biller before any module exists now asks for the module name first and creates it (Bills for a biller, Home for a duty), instead of showing an empty dropdown.
 - Fixed a Home Assistant log warning about reading a file inside the event loop when the card is registered.

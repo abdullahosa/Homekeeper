@@ -23,3 +23,5 @@ SIGNAL_UPDATE = "homekeeper_update_{entry_id}"
 EVENT_CHANGED = "homekeeper_changed"  # fired whenever the card should refresh
 STATIC_URL = "/homekeeper_static"
 CARD_FILE = "homekeeper-card.js"
+PANEL_FILE = "homekeeper-setup.js"
+PANEL_PATH = "homekeeper"  # sidebar URL: /homekeeper

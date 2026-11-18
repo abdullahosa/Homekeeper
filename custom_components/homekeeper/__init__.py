@@ -12,7 +12,15 @@ from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.loader import async_get_integration
 
 from . import voice, websocket
-from .const import CARD_FILE, DOMAIN, PLATFORMS, STATIC_URL, TICK_INTERVAL_MINUTES
+from .const import (
+    CARD_FILE,
+    DOMAIN,
+    PANEL_FILE,
+    PANEL_PATH,
+    PLATFORMS,
+    STATIC_URL,
+    TICK_INTERVAL_MINUTES,
+)
 from .labels import relabel
 from .runtime import Runtime
 from .services import async_register_services
@@ -102,6 +110,7 @@ async def _async_register_frontend(hass: HomeAssistant) -> None:
         _LOGGER.debug("No frontend in this Home Assistant run; skipping the Homekeeper card")
         return
     try:
+        from homeassistant.components import panel_custom
         from homeassistant.components.frontend import add_extra_js_url
         from homeassistant.components.http import StaticPathConfig
 
@@ -109,5 +118,14 @@ async def _async_register_frontend(hass: HomeAssistant) -> None:
             [StaticPathConfig(STATIC_URL, str(folder), cache_headers=False)]
         )
         add_extra_js_url(hass, f"{STATIC_URL}/{CARD_FILE}?v={version}")
+        await panel_custom.async_register_panel(
+            hass,
+            frontend_url_path=PANEL_PATH,
+            webcomponent_name="homekeeper-setup",
+            sidebar_title="Homekeeper",
+            sidebar_icon="mdi:home-heart",
+            module_url=f"{STATIC_URL}/{PANEL_FILE}?v={version}",
+            require_admin=True,
+        )
     except Exception:  # noqa: BLE001 - the card is optional; entities still work without it
         _LOGGER.warning("Could not register the Homekeeper card", exc_info=True)
