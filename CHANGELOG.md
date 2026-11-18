@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- The duty details form now says which field is wrong (reminder, escalation or months) and keeps what you typed instead of clearing the form. The reminder and escalation labels explain that -3d means 3 days before the due date and 2d means 2 days after.
 - Adding a person no longer asks for an ID; it is made from the name (Arabic names are transliterated, repeats get `_2`). Existing people are unchanged.
 - Owner and observer pickers show names instead of IDs.
 

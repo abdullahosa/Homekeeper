@@ -249,3 +249,26 @@ def test_services_yaml_lists_every_bundled_pack():
     spec = yaml.safe_load((PACKS.parent / "services.yaml").read_text())
     assert spec["import_pack"]["fields"]["name"]["selector"]["select"]["options"] == BUNDLED_PACKS
     assert BUNDLED_PACKS == sorted(p.stem for p in PACKS.glob("*.yaml"))
+
+
+async def test_bad_reminder_shows_the_field_and_keeps_what_was_typed(hass, entry_factory):
+    entry = entry_factory()
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    r = await hass.config_entries.subentries.async_init(
+        (entry.entry_id, "duty"), context={"source": "user"})
+    r = await hass.config_entries.subentries.async_configure(
+        r["flow_id"], {"id": "x", "module": "home", "title_en": "X", "owners": [],
+                       "observers": [], "schedule_type": "after_completion"})
+    r = await hass.config_entries.subentries.async_configure(r["flow_id"], {"every": "7d"})
+    assert r["step_id"] == "details"
+    r = await hass.config_entries.subentries.async_configure(
+        r["flow_id"], {"remind": "-3, 0d", "escalate_after": "2 days", "season": "3,13",
+                       "how_to": "Keep me", "done_by": ["button"], "enabled": True})
+    assert r["errors"] == {"remind": "bad_duration", "escalate_after": "bad_duration",
+                           "season": "bad_months"}
+    defaults = {str(k): k.default() for k in r["data_schema"].schema}
+    assert defaults["remind"] == "-3, 0d" and defaults["how_to"] == "Keep me"
+    r = await hass.config_entries.subentries.async_configure(
+        r["flow_id"], {"remind": "-3d,0d", "escalate_after": "2d", "season": "3,4",
+                       "how_to": "Keep me", "done_by": ["button"], "enabled": True})
+    assert r["type"] is FlowResultType.CREATE_ENTRY

@@ -383,20 +383,29 @@ class DutyFlow(_BaseSubentryFlow):
         old = self._existing()
         errors: dict[str, str] = {}
         if user_input is not None:
-            try:
-                remind = _csv(user_input.get("remind"))
-                for off in remind:
+            remind: list[str] = []
+            escalate: list[dict[str, Any]] = []
+            season: list[int] | None = None
+            for off in _csv(user_input.get("remind")):
+                try:
                     sch.parse_duration(off)
-                escalate = []
-                if user_input.get("escalate_after"):
-                    sch.parse_duration(user_input["escalate_after"])
-                    escalate = [{"after": user_input["escalate_after"], "notify": ["admin"]}]
+                    remind.append(off)
+                except ValueError:
+                    errors["remind"] = "bad_duration"
+            after = (user_input.get("escalate_after") or "").strip()
+            if after:
+                try:
+                    sch.parse_duration(after)
+                    escalate = [{"after": after, "notify": ["admin"]}]
+                except ValueError:
+                    errors["escalate_after"] = "bad_duration"
+            try:
                 season = [int(m) for m in _csv(user_input.get("season"))] or None
                 if season and not all(1 <= m <= 12 for m in season):
                     raise ValueError("season")
             except ValueError:
-                errors["base"] = "bad_details"
-            else:
+                errors["season"] = "bad_months"
+            if not errors:
                 b = self._basic
                 title = {"en": b["title_en"]}
                 if b.get("title_ar"):
@@ -418,18 +427,28 @@ class DutyFlow(_BaseSubentryFlow):
                 ).to_dict()
                 return self._finish(b["title_en"], data, b["id"])
         esc = old.get("escalate") or []
+        if user_input is not None:  # keep what was typed so a typo does not wipe the form
+            shown = user_input
+        else:
+            shown = {
+                "remind": ",".join(old.get("remind", [])),
+                "escalate_after": esc[0]["after"] if esc else "",
+                "how_to": old.get("how_to", ""),
+                "season": ",".join(str(m) for m in old.get("season") or []),
+                "nfc_tags": ",".join(old.get("nfc_tags", [])),
+                "done_by": old.get("done_by", ["button", "nfc", "voice"]),
+                "enabled": old.get("enabled", True),
+            }
         fields = {
-            vol.Optional("remind", default=",".join(old.get("remind", []))): _text(),
-            vol.Optional(
-                "escalate_after", default=esc[0]["after"] if esc else ""
-            ): _text(),
-            vol.Optional("how_to", default=old.get("how_to", "")): _text(True),
-            vol.Optional("season", default=",".join(str(m) for m in old.get("season") or [])): _text(),
-            vol.Optional("nfc_tags", default=",".join(old.get("nfc_tags", []))): _text(),
-            vol.Optional(
-                "done_by", default=old.get("done_by", ["button", "nfc", "voice"])
-            ): _select(DONE_BY_CHOICES, multiple=True),
-            vol.Optional("enabled", default=old.get("enabled", True)): selector.BooleanSelector(),
+            vol.Optional("remind", default=shown.get("remind", "")): _text(),
+            vol.Optional("escalate_after", default=shown.get("escalate_after", "")): _text(),
+            vol.Optional("how_to", default=shown.get("how_to", "")): _text(True),
+            vol.Optional("season", default=shown.get("season", "")): _text(),
+            vol.Optional("nfc_tags", default=shown.get("nfc_tags", "")): _text(),
+            vol.Optional("done_by", default=shown.get("done_by", ["button"])): _select(
+                DONE_BY_CHOICES, multiple=True
+            ),
+            vol.Optional("enabled", default=shown.get("enabled", True)): selector.BooleanSelector(),
         }
         return self.async_show_form(
             step_id="details", data_schema=vol.Schema(fields), errors=errors
