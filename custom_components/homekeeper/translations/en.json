@@ -32,7 +32,6 @@
         "user": {
           "title": "Person",
           "data": {
-            "id": "ID (short, no spaces)",
             "name": "Name",
             "role": "Role",
             "language": "Notification language",

@@ -37,7 +37,7 @@ async def test_add_person_module_duty_via_ui(hass, entry_factory, freezer):
     await hass.async_block_till_done()
 
     r = await _sub(hass, entry, "person", [
-        {"id": "dad", "name": "Dad", "role": "owner", "language": "ar",
+        {"name": "Dad", "role": "owner", "language": "ar",
          "notify": "notify.mobile_dad", "quiet_start": "22:00", "quiet_end": "07:00"}])
     assert r["type"] is FlowResultType.CREATE_ENTRY
     await hass.async_block_till_done()
@@ -66,21 +66,44 @@ async def test_add_person_module_duty_via_ui(hass, entry_factory, freezer):
     assert hass.states.get("sensor.homekeeper_mow_next_due") is not None
 
 
-async def test_duplicate_and_bad_ids_rejected(hass, entry_factory):
+async def test_person_id_is_made_from_the_name(hass, entry_factory):
+    entry = entry_factory()
+    assert await hass.config_entries.async_setup(entry.entry_id)
+
+    async def add(name, **extra):
+        r = await hass.config_entries.subentries.async_init(
+            (entry.entry_id, "person"), context={"source": "user"})
+        assert "id" not in {str(k) for k in r["data_schema"].schema}
+        return await hass.config_entries.subentries.async_configure(
+            r["flow_id"], {"name": name, "role": "owner", "language": "en", **extra})
+
+    assert (await add("Osamah"))["type"] is FlowResultType.CREATE_ENTRY
+    assert (await add("Osamah"))["type"] is FlowResultType.CREATE_ENTRY  # same name again
+    assert (await add("أحمد"))["type"] is FlowResultType.CREATE_ENTRY
+    assert (await add("!!!"))["type"] is FlowResultType.CREATE_ENTRY
+    await hass.async_block_till_done()
+    ids = {s.data["id"] for s in entry.subentries.values() if s.subentry_type == "person"}
+    assert {"osamah", "osamah_2", "hmd", "person"} <= ids  # Arabic names are transliterated
+
+
+async def test_quiet_hours_need_both_times(hass, entry_factory):
     entry = entry_factory()
     assert await hass.config_entries.async_setup(entry.entry_id)
     r = await hass.config_entries.subentries.async_init(
         (entry.entry_id, "person"), context={"source": "user"})
     r = await hass.config_entries.subentries.async_configure(
-        r["flow_id"], {"id": "a", "name": "X", "role": "owner", "language": "en"})
-    assert r["errors"] == {"id": "id_exists"}
-    r = await hass.config_entries.subentries.async_configure(
-        r["flow_id"], {"id": "Bad Id", "name": "X", "role": "owner", "language": "en"})
-    assert r["errors"] == {"id": "bad_id"}
-    r = await hass.config_entries.subentries.async_configure(
-        r["flow_id"], {"id": "ok", "name": "X", "role": "owner", "language": "en",
-                       "quiet_start": "22:00"})
+        r["flow_id"], {"name": "X", "role": "owner", "language": "en", "quiet_start": "22:00"})
     assert r["errors"] == {"quiet_start": "quiet_both"}
+
+
+async def test_owner_pickers_show_names_but_store_ids(hass, entry_factory):
+    entry = entry_factory()
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    r = await hass.config_entries.subentries.async_init(
+        (entry.entry_id, "module"), context={"source": "user"})
+    owners = next(v for k, v in r["data_schema"].schema.items() if str(k) == "owners")
+    opts = owners.config["options"]
+    assert all(set(o) == {"value", "label"} for o in opts) and {o["value"] for o in opts} >= {"a", "b"}
 
 
 async def test_bad_schedule_is_rejected(hass, entry_factory):
