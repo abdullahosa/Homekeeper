@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Adding a person no longer asks for an ID; it is made from the name (Arabic names are transliterated, repeats get `_2`). Existing people are unchanged.
+- Owner and observer pickers show names instead of IDs.
+
 ## 0.1.0
 
 First installable version.

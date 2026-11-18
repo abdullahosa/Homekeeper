@@ -16,6 +16,7 @@ from homeassistant.config_entries import (
 )
 from homeassistant.core import callback
 from homeassistant.helpers import selector
+from homeassistant.util import slugify
 
 from .const import (
     CONF_CONDITIONS,
@@ -37,7 +38,7 @@ def _text(multiline: bool = False) -> selector.TextSelector:
     return selector.TextSelector(selector.TextSelectorConfig(multiline=multiline))
 
 
-def _select(options: list[str], multiple: bool = False) -> selector.SelectSelector:
+def _select(options: list[Any], multiple: bool = False) -> selector.SelectSelector:
     return selector.SelectSelector(
         selector.SelectSelectorConfig(
             options=options,
@@ -51,10 +52,25 @@ def _csv(text: str | None) -> list[str]:
     return [p.strip() for p in (text or "").split(",") if p.strip()]
 
 
-def _people(entry: ConfigEntry) -> list[str]:
-    return sorted(
-        s.data["id"] for s in entry.subentries.values() if s.subentry_type == SUBENTRY_PERSON
+def _people(entry: ConfigEntry) -> list[selector.SelectOptionDict]:
+    """People for an owner picker: the value is the id, the label is the name."""
+    found = sorted(
+        (s.data["name"], s.data["id"])
+        for s in entry.subentries.values()
+        if s.subentry_type == SUBENTRY_PERSON
     )
+    return [selector.SelectOptionDict(value=i, label=n) for n, i in found]
+
+
+def _new_person_id(name: str, taken: set[str]) -> str:
+    """Make a short unique id from a person's name (Arabic names are transliterated)."""
+    base = slugify(name)
+    if base in ("", "unknown"):  # a name with nothing usable in it
+        base = "person"
+    ident, n = base, 2
+    while ident in taken:
+        ident, n = f"{base}_{n}", n + 1
+    return ident
 
 
 def _modules(entry: ConfigEntry) -> list[str]:
@@ -144,11 +160,9 @@ class PersonFlow(_BaseSubentryFlow):
         old = self._existing()
         errors: dict[str, str] = {}
         if user_input is not None:
-            ident = old.get("id") or user_input["id"]
-            if not SLUG.match(ident):
-                errors["id"] = "bad_id"
-            elif not old and ident in _ids(entry, SUBENTRY_PERSON):
-                errors["id"] = "id_exists"
+            ident = old.get("id") or _new_person_id(
+                user_input["name"], _ids(entry, SUBENTRY_PERSON)
+            )
             quiet = [q for q in (user_input.get("quiet_start"), user_input.get("quiet_end")) if q]
             if len(quiet) == 1:
                 errors["quiet_start"] = "quiet_both"
@@ -166,8 +180,6 @@ class PersonFlow(_BaseSubentryFlow):
                 return self._finish(user_input["name"], data, ident)
         quiet = old.get("quiet_hours") or ["", ""]
         fields: dict[Any, Any] = {}
-        if not old:
-            fields[vol.Required("id", default=(user_input or {}).get("id", ""))] = _text()
         fields.update(
             {
                 vol.Required("name", default=old.get("name", "")): _text(),
