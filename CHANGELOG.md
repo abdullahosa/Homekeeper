@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Adding a duty or biller before any module exists now says to add a module first, instead of showing an empty dropdown with a confusing error.
+- Fixed a Home Assistant log warning about reading a file inside the event loop when the card is registered.
 - Adding a person no longer asks for an ID; it is made from the name (Arabic names are transliterated, repeats get `_2`). Existing people are unchanged.
 - Owner and observer pickers show names instead of IDs.
 
