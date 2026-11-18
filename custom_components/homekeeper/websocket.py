@@ -9,6 +9,7 @@ from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
 from .engine.overview import build_overview
+from .engine.setup import build_setup
 from .runtime import Runtime
 
 
@@ -33,6 +34,7 @@ def me_for_user(hass: HomeAssistant, runtime: Runtime, user_id: str | None) -> s
 @callback
 def async_register(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_overview)
+    websocket_api.async_register_command(hass, ws_setup)
 
 
 @websocket_api.websocket_command(
@@ -51,3 +53,14 @@ def ws_overview(hass: HomeAssistant, connection: websocket_api.ActiveConnection,
     overview["me"] = me_for_user(hass, runtime, connection.user.id if connection.user else None)
     overview["health"] = {"ok": not runtime.health_problems(), "problems": runtime.health_problems()}
     connection.send_result(msg["id"], overview)
+
+
+@websocket_api.websocket_command({vol.Required("type"): "homekeeper/setup"})
+@websocket_api.require_admin
+@callback
+def ws_setup(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
+    runtime = _runtime(hass)
+    if runtime is None:
+        connection.send_error(msg["id"], "not_loaded", "Homekeeper is not set up")
+        return
+    connection.send_result(msg["id"], build_setup(runtime.engine))

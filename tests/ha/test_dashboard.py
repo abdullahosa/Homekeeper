@@ -92,3 +92,50 @@ async def test_card_is_served_and_registered(hass, hass_client, entry_factory):
     card = Path(__file__).parents[2] / "custom_components/homekeeper/frontend/homekeeper-card.js"
     assert card.is_file() and "homekeeper-card" in card.read_text()
     assert STATIC_URL.startswith("/")
+
+
+async def test_setup_overview_over_websocket(hass, hass_ws_client, entry_factory):
+    await _start(hass, entry_factory())
+    client = await hass_ws_client(hass)
+    await client.send_json({"id": 1, "type": "homekeeper/setup"})
+    msg = await client.receive_json()
+    assert msg["success"]
+    kinds = [s["kind"] for s in msg["result"]["sections"]]
+    assert kinds == ["people", "modules", "duties", "billers"]
+    people = next(s for s in msg["result"]["sections"] if s["kind"] == "people")["items"]
+    assert {p["id"] for p in people} == {"adm", "a", "b"}
+    assert msg["result"]["todo_count"] == 0
+
+
+async def test_setup_overview_is_admin_only(hass, hass_ws_client, hass_read_only_access_token, entry_factory):
+    await _start(hass, entry_factory())
+    client = await hass_ws_client(hass, hass_read_only_access_token)
+    await client.send_json({"id": 1, "type": "homekeeper/setup"})
+    msg = await client.receive_json()
+    assert not msg["success"] and msg["error"]["code"] == "unauthorized"
+
+
+async def test_setup_page_is_registered_as_an_admin_sidebar_panel(hass):
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    from custom_components.homekeeper import _async_register_frontend
+    from custom_components.homekeeper.const import PANEL_FILE, PANEL_PATH
+
+    hass.http = MagicMock(async_register_static_paths=AsyncMock())
+    hass.config.components.add("frontend")
+    with (
+        patch("homeassistant.components.panel_custom.async_register_panel") as panel,
+        patch("homeassistant.components.frontend.add_extra_js_url"),
+    ):
+        await _async_register_frontend(hass)
+    panel.assert_awaited_once()
+    kwargs = panel.call_args.kwargs
+    assert kwargs["frontend_url_path"] == PANEL_PATH
+    assert kwargs["webcomponent_name"] == "homekeeper-setup"
+    assert kwargs["require_admin"] is True
+    assert kwargs["module_url"].startswith(f"{STATIC_URL}/{PANEL_FILE}")
+
+    from pathlib import Path
+
+    page = Path(__file__).parents[2] / "custom_components/homekeeper/frontend" / PANEL_FILE
+    assert 'customElements.define("homekeeper-setup"' in page.read_text()

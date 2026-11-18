@@ -5,7 +5,8 @@
     "mqtt",
     "conversation",
     "tag",
-    "frontend"
+    "frontend",
+    "panel_custom"
   ],
   "codeowners": [
     "@abdullahosa"
