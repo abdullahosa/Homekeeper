@@ -118,13 +118,21 @@
         "details": {
           "title": "Reminders and details",
           "data": {
-            "remind": "Remind (e.g. -3d,0d)",
-            "escalate_after": "Escalate to admins after overdue by (e.g. 2d)",
+            "remind": "Remind relative to the due date: -3d = 3 days before, 0d = on the day (e.g. -3d,0d)",
+            "escalate_after": "Escalate to admins when overdue by (e.g. 2d = 2 days after the due date)",
             "how_to": "How to",
             "season": "Active months (e.g. 3,4,5)",
             "done_by": "Can be marked done by",
             "enabled": "Enabled",
             "nfc_tags": "NFC tag IDs that complete this (comma separated; from Settings > Tags)"
+          }
+        },
+        "first_module": {
+          "title": "First, a module",
+          "description": "Duties live in modules (like Bills, Lawn or Home). You don't have one yet, so make it here.",
+          "data": {
+            "module_name": "Module name",
+            "owners": "Default owners"
           }
         }
       },
@@ -132,11 +140,11 @@
         "bad_id": "Use lowercase letters, numbers, - and _.",
         "id_exists": "That ID is already used.",
         "bad_schedule": "That schedule is not valid.",
-        "bad_details": "Check the reminder durations and months."
+        "bad_duration": "Use a number and a unit, like 3d (days), 2w (weeks) or 1m (months). Put a minus in front for before the due date, like -3d.",
+        "bad_months": "Use month numbers from 1 to 12 separated by commas, like 3,4,5."
       },
       "abort": {
-        "reconfigure_successful": "Saved.",
-        "no_modules": "Add a module first (for example Bills or Lawn), or import a pack, then add this."
+        "reconfigure_successful": "Saved."
       }
     },
     "biller": {
@@ -164,6 +172,14 @@
             "escalate_after": "Escalate to admins after overdue by (e.g. 2d)",
             "enabled": "Enabled"
           }
+        },
+        "first_module": {
+          "title": "First, a module",
+          "description": "Duties live in modules (like Bills, Lawn or Home). You don't have one yet, so make it here.",
+          "data": {
+            "module_name": "Module name",
+            "owners": "Default owners"
+          }
         }
       },
       "error": {
@@ -172,8 +188,7 @@
         "bad_details": "Check the numbers and reminder durations."
       },
       "abort": {
-        "reconfigure_successful": "Saved.",
-        "no_modules": "Add a module first (for example Bills or Lawn), or import a pack, then add this."
+        "reconfigure_successful": "Saved."
       }
     }
   },

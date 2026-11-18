@@ -3,8 +3,9 @@
 ## Unreleased
 
 - The list of people, modules, duties and billers on the integration page is now grouped by kind: rows are titled "Person · Dad", "Module · Lawn", "Duty · Lawn · Mow the lawn" and "Biller · Duke Energy". Existing rows are renamed on the next restart, and duties follow when their module is renamed.
-- Adding a duty or biller before any module exists now says to add a module first, instead of showing an empty dropdown with a confusing error.
+- Adding a duty or biller before any module exists now asks for the module name first and creates it (Bills for a biller, Home for a duty), instead of showing an empty dropdown.
 - Fixed a Home Assistant log warning about reading a file inside the event loop when the card is registered.
+- The duty details form now says which field is wrong (reminder, escalation or months) and keeps what you typed instead of clearing the form. The reminder and escalation labels explain that -3d means 3 days before the due date and 2d means 2 days after.
 - Adding a person no longer asks for an ID; it is made from the name (Arabic names are transliterated, repeats get `_2`). Existing people are unchanged.
 - Owner and observer pickers show names instead of IDs.
 

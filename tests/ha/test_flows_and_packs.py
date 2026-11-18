@@ -251,17 +251,63 @@ def test_services_yaml_lists_every_bundled_pack():
     assert BUNDLED_PACKS == sorted(p.stem for p in PACKS.glob("*.yaml"))
 
 
-async def test_biller_and_duty_need_a_module_first(hass, entry_factory):
-    from homeassistant.config_entries import ConfigSubentryData  # noqa: F401
+async def test_bad_reminder_shows_the_field_and_keeps_what_was_typed(hass, entry_factory):
+    entry = entry_factory()
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    r = await hass.config_entries.subentries.async_init(
+        (entry.entry_id, "duty"), context={"source": "user"})
+    r = await hass.config_entries.subentries.async_configure(
+        r["flow_id"], {"id": "x", "module": "home", "title_en": "X", "owners": [],
+                       "observers": [], "schedule_type": "after_completion"})
+    r = await hass.config_entries.subentries.async_configure(r["flow_id"], {"every": "7d"})
+    assert r["step_id"] == "details"
+    r = await hass.config_entries.subentries.async_configure(
+        r["flow_id"], {"remind": "-3, 0d", "escalate_after": "2 days", "season": "3,13",
+                       "how_to": "Keep me", "done_by": ["button"], "enabled": True})
+    assert r["errors"] == {"remind": "bad_duration", "escalate_after": "bad_duration",
+                           "season": "bad_months"}
+    defaults = {str(k): k.default() for k in r["data_schema"].schema}
+    assert defaults["remind"] == "-3, 0d" and defaults["how_to"] == "Keep me"
+    r = await hass.config_entries.subentries.async_configure(
+        r["flow_id"], {"remind": "-3d,0d", "escalate_after": "2d", "season": "3,4",
+                       "how_to": "Keep me", "done_by": ["button"], "enabled": True})
+    assert r["type"] is FlowResultType.CREATE_ENTRY
 
+
+async def test_biller_creates_its_module_when_none_exists(hass, entry_factory):
     entry = entry_factory()
     for sub in [s for s in entry.subentries.values() if s.subentry_type == "module"]:
         hass.config_entries.async_remove_subentry(entry, sub.subentry_id)
     assert await hass.config_entries.async_setup(entry.entry_id)
-    for kind in ("biller", "duty"):
-        r = await hass.config_entries.subentries.async_init(
-            (entry.entry_id, kind), context={"source": "user"})
-        assert r["type"] is FlowResultType.ABORT and r["reason"] == "no_modules"
+    r = await hass.config_entries.subentries.async_init(
+        (entry.entry_id, "biller"), context={"source": "user"})
+    assert r["type"] is FlowResultType.FORM and r["step_id"] == "first_module"
+    r = await hass.config_entries.subentries.async_configure(
+        r["flow_id"], {"module_name": "Bills", "owners": ["a"]})
+    assert r["type"] is FlowResultType.FORM and r["step_id"] == "user"
+    modules = {s.data["id"]: s.data for s in entry.subentries.values() if s.subentry_type == "module"}
+    assert modules["bills"]["owners"] == ["a"] and modules["bills"]["title"] == {"en": "Bills"}
+    r = await hass.config_entries.subentries.async_configure(
+        r["flow_id"], {"id": "duke", "name": "Duke Energy", "kind": "bill", "module": "bills",
+                       "sender_domains": "duke-energy.com"})
+    assert r["type"] is FlowResultType.CREATE_ENTRY
+    await hass.async_block_till_done()
+    rt = get_runtime(hass, entry.entry_id)
+    assert "duke" in rt.engine.billers and "bill-duke" in rt.engine.duties
+    assert rt.engine.duties["bill-duke"].module == "bills"
+
+
+async def test_duty_creates_its_module_when_none_exists(hass, entry_factory):
+    entry = entry_factory()
+    for sub in [s for s in entry.subentries.values() if s.subentry_type == "module"]:
+        hass.config_entries.async_remove_subentry(entry, sub.subentry_id)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    r = await hass.config_entries.subentries.async_init(
+        (entry.entry_id, "duty"), context={"source": "user"})
+    assert r["step_id"] == "first_module"
+    r = await hass.config_entries.subentries.async_configure(r["flow_id"], {"module_name": "Home"})
+    assert r["type"] is FlowResultType.FORM and r["step_id"] == "user"
+    assert any(s.data["id"] == "home" for s in entry.subentries.values())
 
 
 async def test_rows_are_titled_by_kind_and_follow_renames(hass, entry_factory, freezer):

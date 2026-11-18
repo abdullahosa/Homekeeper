@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from types import MappingProxyType
 from typing import Any
 
 import voluptuous as vol
@@ -10,6 +11,7 @@ from homeassistant.config_entries import (
     ConfigEntry,
     ConfigFlow,
     ConfigFlowResult,
+    ConfigSubentry,
     ConfigSubentryFlow,
     OptionsFlow,
     SubentryFlowResult,
@@ -64,10 +66,14 @@ def _people(entry: ConfigEntry) -> list[selector.SelectOptionDict]:
 
 
 def _new_person_id(name: str, taken: set[str]) -> str:
-    """Make a short unique id from a person's name (Arabic names are transliterated)."""
+    return _new_id(name, taken, "person")
+
+
+def _new_id(name: str, taken: set[str], fallback: str) -> str:
+    """Make a short unique id from a name (Arabic names are transliterated)."""
     base = slugify(name)
     if base in ("", "unknown"):  # a name with nothing usable in it
-        base = "person"
+        base = fallback
     ident, n = base, 2
     while ident in taken:
         ident, n = f"{base}_{n}", n + 1
@@ -154,6 +160,37 @@ class _BaseSubentryFlow(ConfigSubentryFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
         return await self.async_step_user(user_input)
+
+    _first_module_name = "Home"
+
+    async def async_step_first_module(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
+        """No module exists yet: make one here, then carry on with the form."""
+        entry = self._get_entry()
+        if user_input is not None:
+            name = user_input["module_name"].strip()
+            ident = _new_id(name, _ids(entry, SUBENTRY_MODULE), "module")
+            data = {"id": ident, "title": {"en": name}, "owners": user_input.get("owners", [])}
+            self.hass.config_entries.async_add_subentry(
+                entry,
+                ConfigSubentry(
+                    data=MappingProxyType(data),
+                    subentry_type=SUBENTRY_MODULE,
+                    title=name,
+                    unique_id=f"{SUBENTRY_MODULE}:{ident}",
+                ),
+            )
+            return await self.async_step_user()
+        return self.async_show_form(
+            step_id="first_module",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("module_name", default=self._first_module_name): _text(),
+                    vol.Optional("owners", default=[]): _select(_people(entry), multiple=True),
+                }
+            ),
+        )
 
 
 class PersonFlow(_BaseSubentryFlow):
@@ -311,13 +348,15 @@ def _build_schedule(kind: str, raw: dict[str, Any]) -> dict[str, Any]:
 
 
 class DutyFlow(_BaseSubentryFlow):
+    _first_module_name = "Home"
+
     def __init__(self) -> None:
         self._basic: dict[str, Any] = {}
         self._schedule: dict[str, Any] = {}
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
         if not self._existing() and not _modules(self._get_entry()):
-            return self.async_abort(reason="no_modules")
+            return await self.async_step_first_module()
         entry = self._get_entry()
         old = self._existing()
         errors: dict[str, str] = {}
@@ -387,20 +426,29 @@ class DutyFlow(_BaseSubentryFlow):
         old = self._existing()
         errors: dict[str, str] = {}
         if user_input is not None:
-            try:
-                remind = _csv(user_input.get("remind"))
-                for off in remind:
+            remind: list[str] = []
+            escalate: list[dict[str, Any]] = []
+            season: list[int] | None = None
+            for off in _csv(user_input.get("remind")):
+                try:
                     sch.parse_duration(off)
-                escalate = []
-                if user_input.get("escalate_after"):
-                    sch.parse_duration(user_input["escalate_after"])
-                    escalate = [{"after": user_input["escalate_after"], "notify": ["admin"]}]
+                    remind.append(off)
+                except ValueError:
+                    errors["remind"] = "bad_duration"
+            after = (user_input.get("escalate_after") or "").strip()
+            if after:
+                try:
+                    sch.parse_duration(after)
+                    escalate = [{"after": after, "notify": ["admin"]}]
+                except ValueError:
+                    errors["escalate_after"] = "bad_duration"
+            try:
                 season = [int(m) for m in _csv(user_input.get("season"))] or None
                 if season and not all(1 <= m <= 12 for m in season):
                     raise ValueError("season")
             except ValueError:
-                errors["base"] = "bad_details"
-            else:
+                errors["season"] = "bad_months"
+            if not errors:
                 b = self._basic
                 title = {"en": b["title_en"]}
                 if b.get("title_ar"):
@@ -422,18 +470,28 @@ class DutyFlow(_BaseSubentryFlow):
                 ).to_dict()
                 return self._finish(b["title_en"], data, b["id"])
         esc = old.get("escalate") or []
+        if user_input is not None:  # keep what was typed so a typo does not wipe the form
+            shown = user_input
+        else:
+            shown = {
+                "remind": ",".join(old.get("remind", [])),
+                "escalate_after": esc[0]["after"] if esc else "",
+                "how_to": old.get("how_to", ""),
+                "season": ",".join(str(m) for m in old.get("season") or []),
+                "nfc_tags": ",".join(old.get("nfc_tags", [])),
+                "done_by": old.get("done_by", ["button", "nfc", "voice"]),
+                "enabled": old.get("enabled", True),
+            }
         fields = {
-            vol.Optional("remind", default=",".join(old.get("remind", []))): _text(),
-            vol.Optional(
-                "escalate_after", default=esc[0]["after"] if esc else ""
-            ): _text(),
-            vol.Optional("how_to", default=old.get("how_to", "")): _text(True),
-            vol.Optional("season", default=",".join(str(m) for m in old.get("season") or [])): _text(),
-            vol.Optional("nfc_tags", default=",".join(old.get("nfc_tags", []))): _text(),
-            vol.Optional(
-                "done_by", default=old.get("done_by", ["button", "nfc", "voice"])
-            ): _select(DONE_BY_CHOICES, multiple=True),
-            vol.Optional("enabled", default=old.get("enabled", True)): selector.BooleanSelector(),
+            vol.Optional("remind", default=shown.get("remind", "")): _text(),
+            vol.Optional("escalate_after", default=shown.get("escalate_after", "")): _text(),
+            vol.Optional("how_to", default=shown.get("how_to", "")): _text(True),
+            vol.Optional("season", default=shown.get("season", "")): _text(),
+            vol.Optional("nfc_tags", default=shown.get("nfc_tags", "")): _text(),
+            vol.Optional("done_by", default=shown.get("done_by", ["button"])): _select(
+                DONE_BY_CHOICES, multiple=True
+            ),
+            vol.Optional("enabled", default=shown.get("enabled", True)): selector.BooleanSelector(),
         }
         return self.async_show_form(
             step_id="details", data_schema=vol.Schema(fields), errors=errors
@@ -443,9 +501,11 @@ class DutyFlow(_BaseSubentryFlow):
 class BillerFlow(_BaseSubentryFlow):
     """A sender BillBot reads: a bill to pay, or income (rent) to expect."""
 
+    _first_module_name = "Bills"
+
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
         if not self._existing() and not _modules(self._get_entry()):
-            return self.async_abort(reason="no_modules")
+            return await self.async_step_first_module()
         entry = self._get_entry()
         old = self._existing()
         errors: dict[str, str] = {}
@@ -492,7 +552,10 @@ class BillerFlow(_BaseSubentryFlow):
             {
                 vol.Required("name", default=old.get("name", "")): _text(),
                 vol.Required("kind", default=old.get("kind", "bill")): _select(["bill", "income"]),
-                vol.Required("module", default=old.get("module", "bills")): _select(_modules(entry)),
+                vol.Required(
+                    "module",
+                    default=old.get("module") or ("bills" if "bills" in _modules(entry) else _modules(entry)[0]),
+                ): _select(_modules(entry)),
                 vol.Optional("sender_domains", default=",".join(old.get("sender_domains", []))): _text(),
                 vol.Optional("owners", default=old.get("owners", [])): _select(
                     _people(entry), multiple=True
