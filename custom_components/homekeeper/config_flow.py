@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from types import MappingProxyType
 from typing import Any
 
 import voluptuous as vol
@@ -10,6 +11,7 @@ from homeassistant.config_entries import (
     ConfigEntry,
     ConfigFlow,
     ConfigFlowResult,
+    ConfigSubentry,
     ConfigSubentryFlow,
     OptionsFlow,
     SubentryFlowResult,
@@ -63,10 +65,14 @@ def _people(entry: ConfigEntry) -> list[selector.SelectOptionDict]:
 
 
 def _new_person_id(name: str, taken: set[str]) -> str:
-    """Make a short unique id from a person's name (Arabic names are transliterated)."""
+    return _new_id(name, taken, "person")
+
+
+def _new_id(name: str, taken: set[str], fallback: str) -> str:
+    """Make a short unique id from a name (Arabic names are transliterated)."""
     base = slugify(name)
     if base in ("", "unknown"):  # a name with nothing usable in it
-        base = "person"
+        base = fallback
     ident, n = base, 2
     while ident in taken:
         ident, n = f"{base}_{n}", n + 1
@@ -152,6 +158,37 @@ class _BaseSubentryFlow(ConfigSubentryFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
         return await self.async_step_user(user_input)
+
+    _first_module_name = "Home"
+
+    async def async_step_first_module(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
+        """No module exists yet: make one here, then carry on with the form."""
+        entry = self._get_entry()
+        if user_input is not None:
+            name = user_input["module_name"].strip()
+            ident = _new_id(name, _ids(entry, SUBENTRY_MODULE), "module")
+            data = {"id": ident, "title": {"en": name}, "owners": user_input.get("owners", [])}
+            self.hass.config_entries.async_add_subentry(
+                entry,
+                ConfigSubentry(
+                    data=MappingProxyType(data),
+                    subentry_type=SUBENTRY_MODULE,
+                    title=name,
+                    unique_id=f"{SUBENTRY_MODULE}:{ident}",
+                ),
+            )
+            return await self.async_step_user()
+        return self.async_show_form(
+            step_id="first_module",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("module_name", default=self._first_module_name): _text(),
+                    vol.Optional("owners", default=[]): _select(_people(entry), multiple=True),
+                }
+            ),
+        )
 
 
 class PersonFlow(_BaseSubentryFlow):
@@ -309,11 +346,15 @@ def _build_schedule(kind: str, raw: dict[str, Any]) -> dict[str, Any]:
 
 
 class DutyFlow(_BaseSubentryFlow):
+    _first_module_name = "Home"
+
     def __init__(self) -> None:
         self._basic: dict[str, Any] = {}
         self._schedule: dict[str, Any] = {}
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
+        if not self._existing() and not _modules(self._get_entry()):
+            return await self.async_step_first_module()
         entry = self._get_entry()
         old = self._existing()
         errors: dict[str, str] = {}
@@ -458,7 +499,11 @@ class DutyFlow(_BaseSubentryFlow):
 class BillerFlow(_BaseSubentryFlow):
     """A sender BillBot reads: a bill to pay, or income (rent) to expect."""
 
+    _first_module_name = "Bills"
+
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
+        if not self._existing() and not _modules(self._get_entry()):
+            return await self.async_step_first_module()
         entry = self._get_entry()
         old = self._existing()
         errors: dict[str, str] = {}
@@ -505,7 +550,10 @@ class BillerFlow(_BaseSubentryFlow):
             {
                 vol.Required("name", default=old.get("name", "")): _text(),
                 vol.Required("kind", default=old.get("kind", "bill")): _select(["bill", "income"]),
-                vol.Required("module", default=old.get("module", "bills")): _select(_modules(entry)),
+                vol.Required(
+                    "module",
+                    default=old.get("module") or ("bills" if "bills" in _modules(entry) else _modules(entry)[0]),
+                ): _select(_modules(entry)),
                 vol.Optional("sender_domains", default=",".join(old.get("sender_domains", []))): _text(),
                 vol.Optional("owners", default=old.get("owners", [])): _select(
                     _people(entry), multiple=True

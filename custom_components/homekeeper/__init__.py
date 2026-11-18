@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import logging
 from datetime import timedelta
 from pathlib import Path
@@ -10,6 +9,7 @@ from pathlib import Path
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import Event, HomeAssistant
 from homeassistant.helpers.event import async_track_time_interval
+from homeassistant.loader import async_get_integration
 
 from . import voice, websocket
 from .const import CARD_FILE, DOMAIN, PLATFORMS, STATIC_URL, TICK_INTERVAL_MINUTES
@@ -93,7 +93,7 @@ async def _async_register_frontend(hass: HomeAssistant) -> None:
     hass.data[f"{DOMAIN}_frontend"] = True
     websocket.async_register(hass)
     folder = Path(__file__).parent / "frontend"
-    version = json.loads((Path(__file__).parent / "manifest.json").read_text())["version"]
+    version = (await async_get_integration(hass, DOMAIN)).version
     if getattr(hass, "http", None) is None or "frontend" not in hass.config.components:
         _LOGGER.debug("No frontend in this Home Assistant run; skipping the Homekeeper card")
         return
