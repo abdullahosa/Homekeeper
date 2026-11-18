@@ -262,3 +262,26 @@ async def test_biller_and_duty_need_a_module_first(hass, entry_factory):
         r = await hass.config_entries.subentries.async_init(
             (entry.entry_id, kind), context={"source": "user"})
         assert r["type"] is FlowResultType.ABORT and r["reason"] == "no_modules"
+
+
+async def test_rows_are_titled_by_kind_and_follow_renames(hass, entry_factory, freezer):
+    freezer.move_to("2026-11-14 09:00:00")
+    entry = entry_factory()
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    titles = {s.data["id"]: s.title for s in entry.subentries.values()}
+    assert titles["a"].startswith("Person · ")
+    assert titles["home"] == "Module · " + next(
+        s.data["title"]["en"] for s in entry.subentries.values() if s.data["id"] == "home"
+    )
+    duty = next(s for s in entry.subentries.values() if s.data["id"] == "filters")
+    assert duty.title.startswith("Duty · ") and duty.title.count(" · ") == 2
+
+    # renaming a module renames the titles of its duties
+    module = next(s for s in entry.subentries.values() if s.data["id"] == "home")
+    hass.config_entries.async_update_subentry(
+        entry, module, data={**module.data, "title": {"en": "Household"}}
+    )
+    await hass.async_block_till_done()
+    duty = next(s for s in entry.subentries.values() if s.data["id"] == "filters")
+    assert duty.title.startswith("Duty · Household · ")

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- The list of people, modules, duties and billers on the integration page is now grouped by kind: rows are titled "Person · Dad", "Module · Lawn", "Duty · Lawn · Mow the lawn" and "Biller · Duke Energy". Existing rows are renamed on the next restart, and duties follow when their module is renamed.
 - Adding a duty or biller before any module exists now says to add a module first, instead of showing an empty dropdown with a confusing error.
 - Fixed a Home Assistant log warning about reading a file inside the event loop when the card is registered.
 - Adding a person no longer asks for an ID; it is made from the name (Arabic names are transliterated, repeats get `_2`). Existing people are unchanged.

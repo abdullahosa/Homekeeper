@@ -16,6 +16,7 @@ from homeassistant.util import dt as dt_util
 from .const import DOMAIN, SUBENTRY_BILLER, SUBENTRY_DUTY, SUBENTRY_MODULE
 from .engine import Engine
 from .engine.packs import export_pack, import_pack, load_pack_text
+from .labels import label_for
 from .runtime import Runtime, get_runtime
 
 COMPLETE = vol.Schema(
@@ -207,15 +208,17 @@ def _apply_report(hass: HomeAssistant, rt: Runtime, trial: Engine, report) -> No
             if kind == "module":
                 data = trial.modules[ident].to_dict()
                 stype = SUBENTRY_MODULE
-                title = data["title"].get("en") or ident
+                title = label_for(stype, data)
             elif kind == "biller":
                 data = trial.billers[ident].to_dict()
                 stype = SUBENTRY_BILLER
-                title = trial.billers[ident].name
+                title = label_for(stype, data)
             elif kind == "duty":
                 data = trial.duties[ident].to_dict()
                 stype = SUBENTRY_DUTY
-                title = trial.duties[ident].display_title("en")
+                title = label_for(
+                    stype, data, {m.id: m.title.get("en") or m.id for m in trial.modules.values()}
+                )
             else:
                 continue
             current = existing.get((stype, ident))

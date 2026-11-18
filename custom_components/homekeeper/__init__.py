@@ -13,6 +13,7 @@ from homeassistant.loader import async_get_integration
 
 from . import voice, websocket
 from .const import CARD_FILE, DOMAIN, PLATFORMS, STATIC_URL, TICK_INTERVAL_MINUTES
+from .labels import relabel
 from .runtime import Runtime
 from .services import async_register_services
 
@@ -22,6 +23,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    relabel(hass, entry)  # tidy row titles, including ones made by older versions
     runtime = Runtime(hass, entry)
     await runtime.async_load()
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = runtime
@@ -68,6 +70,8 @@ async def _updated(hass: HomeAssistant, entry: ConfigEntry) -> None:
     runtime: Runtime | None = hass.data.get(DOMAIN, {}).get(entry.entry_id)
     if runtime is None or runtime.importing:
         return
+    if relabel(hass, entry):  # e.g. a module was renamed; its duties' titles follow
+        return  # relabeling triggers this listener again
     if runtime.compute_signature() != runtime.signature:
         await hass.config_entries.async_reload(entry.entry_id)
         return

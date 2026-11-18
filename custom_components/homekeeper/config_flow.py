@@ -28,6 +28,7 @@ from .const import (
 )
 from .engine import Biller, Duty
 from .engine import schedule as sch
+from .labels import entry_label
 
 SLUG = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
 SCHEDULE_CHOICES = list(sch.SCHEDULE_TYPES)
@@ -137,6 +138,7 @@ class _BaseSubentryFlow(ConfigSubentryFlow):
         return {}
 
     def _finish(self, title: str, data: dict[str, Any], ident: str) -> SubentryFlowResult:
+        title = entry_label(self._get_entry(), self._subentry_type, data)
         if self.source == "reconfigure":
             return self.async_update_and_abort(
                 self._get_entry(),
