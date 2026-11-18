@@ -249,3 +249,16 @@ def test_services_yaml_lists_every_bundled_pack():
     spec = yaml.safe_load((PACKS.parent / "services.yaml").read_text())
     assert spec["import_pack"]["fields"]["name"]["selector"]["select"]["options"] == BUNDLED_PACKS
     assert BUNDLED_PACKS == sorted(p.stem for p in PACKS.glob("*.yaml"))
+
+
+async def test_biller_and_duty_need_a_module_first(hass, entry_factory):
+    from homeassistant.config_entries import ConfigSubentryData  # noqa: F401
+
+    entry = entry_factory()
+    for sub in [s for s in entry.subentries.values() if s.subentry_type == "module"]:
+        hass.config_entries.async_remove_subentry(entry, sub.subentry_id)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    for kind in ("biller", "duty"):
+        r = await hass.config_entries.subentries.async_init(
+            (entry.entry_id, kind), context={"source": "user"})
+        assert r["type"] is FlowResultType.ABORT and r["reason"] == "no_modules"

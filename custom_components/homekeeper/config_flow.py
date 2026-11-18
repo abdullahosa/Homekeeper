@@ -314,6 +314,8 @@ class DutyFlow(_BaseSubentryFlow):
         self._schedule: dict[str, Any] = {}
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
+        if not self._existing() and not _modules(self._get_entry()):
+            return self.async_abort(reason="no_modules")
         entry = self._get_entry()
         old = self._existing()
         errors: dict[str, str] = {}
@@ -440,6 +442,8 @@ class BillerFlow(_BaseSubentryFlow):
     """A sender BillBot reads: a bill to pay, or income (rent) to expect."""
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
+        if not self._existing() and not _modules(self._get_entry()):
+            return self.async_abort(reason="no_modules")
         entry = self._get_entry()
         old = self._existing()
         errors: dict[str, str] = {}

@@ -135,7 +135,8 @@
         "bad_details": "Check the reminder durations and months."
       },
       "abort": {
-        "reconfigure_successful": "Saved."
+        "reconfigure_successful": "Saved.",
+        "no_modules": "Add a module first (for example Bills or Lawn), or import a pack, then add this."
       }
     },
     "biller": {
@@ -171,7 +172,8 @@
         "bad_details": "Check the numbers and reminder durations."
       },
       "abort": {
-        "reconfigure_successful": "Saved."
+        "reconfigure_successful": "Saved.",
+        "no_modules": "Add a module first (for example Bills or Lawn), or import a pack, then add this."
       }
     }
   },
