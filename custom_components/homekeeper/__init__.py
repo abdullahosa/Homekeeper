@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import logging
 from datetime import timedelta
 from pathlib import Path
@@ -9,7 +10,6 @@ from pathlib import Path
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import Event, HomeAssistant
 from homeassistant.helpers.event import async_track_time_interval
-from homeassistant.loader import async_get_integration
 
 from . import voice, websocket
 from .const import (
@@ -98,6 +98,10 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return ok
 
 
+def _fingerprint(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()[:12]
+
+
 async def _async_register_frontend(hass: HomeAssistant) -> None:
     """Serve the card and load it on every dashboard. Done once per Home Assistant run."""
     if hass.data.get(f"{DOMAIN}_frontend"):
@@ -105,7 +109,11 @@ async def _async_register_frontend(hass: HomeAssistant) -> None:
     hass.data[f"{DOMAIN}_frontend"] = True
     websocket.async_register(hass)
     folder = Path(__file__).parent / "frontend"
-    version = (await async_get_integration(hass, DOMAIN)).version
+    # A fingerprint of each file, not the manifest version: updates from HACS keep the
+    # version number, so the browser would keep running the old card.
+    card_v, panel_v = await hass.async_add_executor_job(
+        lambda: (_fingerprint(folder / CARD_FILE), _fingerprint(folder / PANEL_FILE))
+    )
     if getattr(hass, "http", None) is None or "frontend" not in hass.config.components:
         _LOGGER.debug("No frontend in this Home Assistant run; skipping the Homekeeper card")
         return
@@ -117,14 +125,14 @@ async def _async_register_frontend(hass: HomeAssistant) -> None:
         await hass.http.async_register_static_paths(
             [StaticPathConfig(STATIC_URL, str(folder), cache_headers=False)]
         )
-        add_extra_js_url(hass, f"{STATIC_URL}/{CARD_FILE}?v={version}")
+        add_extra_js_url(hass, f"{STATIC_URL}/{CARD_FILE}?v={card_v}")
         await panel_custom.async_register_panel(
             hass,
             frontend_url_path=PANEL_PATH,
             webcomponent_name="homekeeper-setup",
             sidebar_title="Homekeeper",
             sidebar_icon="mdi:home-heart",
-            module_url=f"{STATIC_URL}/{PANEL_FILE}?v={version}",
+            module_url=f"{STATIC_URL}/{PANEL_FILE}?v={panel_v}",
             require_admin=True,
         )
     except Exception:  # noqa: BLE001 - the card is optional; entities still work without it

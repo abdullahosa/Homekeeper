@@ -113,14 +113,14 @@
             "completes": "Completes these duties (comma separated IDs)",
             "due_in": "Due after signal (e.g. 3d)",
             "opens_before": "Open this long before due",
-            "calendar": "Calendar to follow (e.g. your CARTology pickup calendar)",
+            "calendar": "Calendar to follow (e.g. your city's trash pickup calendar)",
             "match": "Only events containing (comma separated, e.g. garbage; blank = every event)",
             "lead": "Do it this long before each event (1d = the evening before, 0d = the same day)",
             "notify_at": "Send the heads-up at (HH:MM)"
           },
           "data_description": {
-            "calendar": "Add the pickup calendar first: Settings > Devices & services > Add integration > Remote Calendar, with your CARTology (ReCollect) calendar link.",
-            "match": "For CARTology use garbage: its calendar also has drop-off and leaf-vacuum days. Homekeeper shows the carts from the event title on the to-do and in the push (Garbage + Recycling).",
+            "calendar": "Add the pickup calendar first: Settings > Devices & services > Add integration > Remote Calendar, with your city's trash calendar link.",
+            "match": "For a city trash calendar, use garbage: it may also list drop-off and leaf collection days. Homekeeper shows the carts from the event title on the to-do and in the push (Garbage + Recycling).",
             "notify_at": "If the duty is still open the next morning, the overdue push waits until 6:00."
           }
         },

@@ -15,7 +15,7 @@ BILLS = [
      "module": "bills", "status": "due", "amount": 338.62, "date": "2026-11-20", "days": 1, "autopay": False,
      "duty_id": "bill-electric", "owners": ["alex", "dad"], "login_url": "https://example.com/duke",
      "login_note": "Vaultwarden > Home Bills > Duke Energy"},
-    {"id": "water", "name": "City of Concord", "name_ar": "المياه", "icon": "mdi:water", "kind": "bill",
+    {"id": "water", "name": "City Water", "name_ar": "المياه", "icon": "mdi:water", "kind": "bill",
      "module": "bills", "status": "overdue", "amount": 87.65, "date": "2026-11-17", "days": -2, "autopay": False,
      "duty_id": "bill-water", "owners": ["sam"], "login_url": "", "login_note": ""},
     {"id": "internet", "name": "GFiber", "name_ar": "", "icon": "", "kind": "bill", "module": "bills",
@@ -66,7 +66,7 @@ def test_bills_view_rows_status_amounts_and_total(browser):
     duke = _row(page, "Duke Energy").inner_text()
     assert "الكهرباء" in duke and "Due" in duke and "$338.62" in duke and "Nov 20 · Tomorrow" in duke
     assert "Alex, Dad" in duke and "Vaultwarden > Home Bills > Duke Energy" in duke
-    water = _row(page, "City of Concord")
+    water = _row(page, "City Water")
     assert "Overdue" in water.inner_text() and "2 days late" in water.inner_text()
     assert water.locator(".late").count() == 1
     gas = _row(page, "Enbridge Gas").inner_text()
@@ -84,7 +84,7 @@ def test_pay_link_while_due_log_in_link_once_paid(browser):
     assert pay.inner_text() == "Pay ↗" and pay.get_attribute("href") == "https://example.com/duke"
     assert pay.get_attribute("rel") == "noopener noreferrer"
     assert _row(page, "Enbridge Gas").locator(".login a").inner_text() == "Log in ↗"
-    assert _row(page, "City of Concord").locator(".login").count() == 0  # no link set
+    assert _row(page, "City Water").locator(".login").count() == 0  # no link set
     assert _row(page, "Trash").locator("a").count() == 0  # never a javascript: link
     assert _row(page, "Trash").locator("b").count() == 0  # names are text, not HTML
 
