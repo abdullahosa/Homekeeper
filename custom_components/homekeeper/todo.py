@@ -56,6 +56,7 @@ class HomekeeperTodo(HomekeeperEntity, TodoListEntity):
                             "Snoozed" if state == "snoozed" else "",
                             duty.how_to,
                             *eng.login_lines(duty),
+                            *eng.calendar_lines(duty),
                         )
                         if p
                     ),

@@ -303,6 +303,14 @@ def _schedule_fields(kind: str, old: dict[str, Any]) -> dict[Any, Any]:
     elif kind == "signal":
         f[vol.Optional("completes", default=",".join(old.get("completes", [])))] = _text()
         f[vol.Optional("due_in", default=d("due_in", "0d"))] = _text()
+    elif kind == "calendar":
+        f[vol.Required("calendar", default=d("calendar", vol.UNDEFINED))] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="calendar")
+        )
+        f[vol.Optional("match", default=",".join(old.get("match", [])))] = _text()
+        f[vol.Optional("lead", default=d("lead", "1d"))] = _text()
+        f[vol.Optional("notify_at", default=d("notify_at", "18:00"))] = _text()
+        return f  # opens on the day; "open this long before" does not apply
     f[vol.Optional("opens_before", default=d("opens_before"))] = _text()
     return f
 
@@ -343,6 +351,14 @@ def _build_schedule(kind: str, raw: dict[str, Any]) -> dict[str, Any]:
         if raw.get("completes"):
             sched["completes"] = _csv(raw["completes"])
         sched["due_in"] = (raw.get("due_in") or "0d").strip()
+    elif kind == "calendar":
+        sched["calendar"] = raw["calendar"]
+        sched["match"] = _csv(raw.get("match"))
+        sched["lead"] = (raw.get("lead") or "1d").strip()
+        notify_at = (raw.get("notify_at") or "").strip()
+        if notify_at:
+            sched["notify_at"] = notify_at[:5]  # "18:00:00" -> "18:00"
+        return sched
     if raw.get("opens_before"):
         sched["opens_before"] = raw["opens_before"].strip()
     return sched

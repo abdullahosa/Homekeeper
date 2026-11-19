@@ -218,3 +218,19 @@ def test_log_in_label_in_arabic(browser):
     }""")
     page.wait_for_selector("homekeeper-card >> .login a")
     assert page.inner_text("homekeeper-card >> .login a") == "تسجيل الدخول ↗"
+
+
+def test_calendar_duty_row_says_what_is_collected(browser):
+    for lang, expected in (("en", "Garbage + Recycling"), ("ar", "النفايات + إعادة التدوير")):
+        page = _page(browser, {"mode": "list", "language": lang})
+        page.evaluate("""() => {
+          const bins = window.DATA.items.find(i => i.duty_id === 'trash');
+          bins.what = 'Garbage, Recycling'; bins.event = '2026-11-24'; bins.state = 'due'; bins.days = 0;
+          window.fire();
+        }""")
+        page.wait_for_function(
+            f"document.querySelector('homekeeper-card').shadowRoot.textContent.includes({expected!r})"
+        )
+        if lang == "en":
+            SHOTS.mkdir(exist_ok=True)
+            page.screenshot(path=str(SHOTS / "card-bins.png"))

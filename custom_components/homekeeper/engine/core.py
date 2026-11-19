@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Any
 
 from . import schedule as sch
@@ -25,7 +25,7 @@ class Event:
 
 @dataclass
 class Notification:
-    kind: str  # opened | reminder | overdue | escalation | not_mine
+    kind: str  # opened | reminder | overdue | escalation | not_mine | moved
     duty_id: str
     occurrence_id: str
     recipients: list[str]
@@ -334,6 +334,81 @@ class Engine:
         )
         return result
 
+
+    # ------------------------------------------------------------ calendars
+    def apply_calendar(
+        self, duty_id: str, events: list[tuple[date, str]], now: datetime
+    ) -> TickResult:
+        """Follow a calendar (e.g. trash pickup): keep one occurrence for the next
+        matching event, due `lead` before it (1d = the evening before). If the event
+        moves or is cancelled, the occurrence moves with it; once the event day has
+        passed undone, it is skipped. `events` is (event day, summary) for the coming
+        weeks. An empty list means "no data" (calendar not loaded yet) and changes nothing."""
+        result = TickResult()
+        duty = self.duties.get(duty_id)
+        if duty is None or not duty.enabled or duty.schedule.get("type") != "calendar" or not events:
+            return result
+        today = now.date()
+        lead = duty.schedule.get("lead", "1d")
+        words = [w.lower() for w in duty.schedule.get("match", []) if str(w).strip()]
+        by_day: dict[date, list[str]] = {}
+        for day, summary in sorted(events):
+            text = (summary or "").strip()
+            if words and not any(w in text.lower() for w in words):
+                continue
+            seen = by_day.setdefault(day, [])
+            if text and text not in seen:
+                seen.append(text)
+        handled = {h.occurrence_due for h in self.history if h.duty_id == duty_id}
+        upcoming = [d for d in sorted(by_day) if d >= today and sch.add_duration(d, lead, -1) not in handled]
+        target = upcoming[0] if upcoming else None
+
+        occ = self.occurrences.get(duty_id)
+        if occ is not None:
+            event_day = (
+                date.fromisoformat(occ.meta["event"]) if occ.meta.get("event")
+                else sch.add_duration(occ.due, lead)
+            )
+            if event_day < today:  # the pickup came and went
+                self._advance(duty, occ, today, "skipped", None, "auto", "event_passed", result)
+            elif target == event_day:
+                occ.meta["what"] = " + ".join(by_day[event_day])
+                return result
+            else:  # moved, cancelled, or an earlier one appeared
+                imminent = today >= occ.due - timedelta(days=1)
+                self.occurrences.pop(duty_id)
+                if target is not None:
+                    new = self._calendar_occurrence(duty, target, by_day[target], lead)
+                    result.events.append(Event("moved", duty.id, new.id, None, target.isoformat()))
+                    if imminent:
+                        result.notifications.append(
+                            Notification(
+                                "moved", duty.id, new.id, self.effective_owners(duty),
+                                detail=target.isoformat(),
+                            )
+                        )
+                return result
+        if target is not None and duty_id not in self.occurrences:
+            self._calendar_occurrence(duty, target, by_day[target], lead)
+        return result
+
+    def calendar_lines(self, duty: Duty) -> list[str]:
+        occ = self.occurrences.get(duty.id)
+        if occ is None or not occ.meta.get("event"):
+            return []
+        what = occ.meta.get("what") or "pickup"
+        return [f"Collecting: {what} on {occ.meta['event']}"]
+
+    def _calendar_occurrence(
+        self, duty: Duty, event_day: date, whats: list[str], lead: str
+    ) -> Occurrence:
+        due = sch.add_duration(event_day, lead, -1)
+        occ = Occurrence(
+            duty_id=duty.id, due=due, opens=due,
+            meta={"event": event_day.isoformat(), "what": " + ".join(whats)},
+        )
+        self.occurrences[duty.id] = occ
+        return occ
 
     def _complete_targets(
         self,

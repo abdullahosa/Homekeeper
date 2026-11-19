@@ -29,6 +29,10 @@ def describe_schedule(sched: dict[str, Any]) -> str:
         return "When its condition is met"
     if kind == "signal":
         return "When a machine signals it"
+    if kind == "calendar":
+        words = ", ".join(sched.get("match") or [])
+        lead = sched.get("lead", "1d")
+        return f"{lead} before each {words + ' ' if words else ''}event in {sched.get('calendar', '?')}"
     return "No schedule"
 
 

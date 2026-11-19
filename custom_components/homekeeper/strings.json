@@ -112,7 +112,16 @@
             "open_early_when": "Open early when",
             "completes": "Completes these duties (comma separated IDs)",
             "due_in": "Due after signal (e.g. 3d)",
-            "opens_before": "Open this long before due"
+            "opens_before": "Open this long before due",
+            "calendar": "Calendar to follow (e.g. your CARTology pickup calendar)",
+            "match": "Only events containing (comma separated, e.g. Recycling; blank = every event)",
+            "lead": "Do it this long before each event (1d = the evening before, 0d = the same day)",
+            "notify_at": "Send the heads-up at (HH:MM)"
+          },
+          "data_description": {
+            "calendar": "Add the pickup calendar first: Settings > Devices & services > Add integration > Remote Calendar, with your CARTology (ReCollect) calendar link.",
+            "match": "The event title says what is collected, and Homekeeper shows it on the to-do and in the push (Trash + Recycling).",
+            "notify_at": "If the duty is still open the next morning, the overdue push waits until 6:00."
           }
         },
         "details": {

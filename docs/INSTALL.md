@@ -33,6 +33,17 @@ data:
 
 Packs are generic starting points. After importing, open each duty (Homekeeper > the duty > Reconfigure) to set owners, dates and amounts. You can also add duties by hand with **Add duty**, and change or delete any of them later. Packs never overwrite your edits unless you pass `overwrite: true`.
 
+### Trash and recycling night (CARTology)
+
+CARTology, the Cabarrus / Concord / Kannapolis trash app, runs on ReCollect, which gives every address a calendar link. Homekeeper can follow it, so "Put the bins out" opens the evening before each pickup, says what goes out (Trash + Recycling), and moves when a holiday shifts the pickup.
+
+1. Get the calendar link: look up your address on the CARTology page (for example kannapolisnc.gov/CARTology), choose **Get a calendar > Add to Google Calendar**, and copy the link it shows. Delete everything from `?client_id=` onward.
+2. Settings > Devices & services > **Add integration > Remote Calendar**, paste the link. You get a calendar entity with every pickup.
+3. Homekeeper > **Add duty**, schedule type **calendar**: pick that calendar, leave **lead** at `1d` (the evening before) and set the time for the heads-up (default 18:00). To split it, make two duties with **Only events containing** `Garbage` and `Recycling`.
+4. Optional: put an NFC tag on the bin and add it to the duty, so a tap marks it done.
+
+Same-day delays the city sends as app alerts may not be in the calendar; keep the CARTology app for those.
+
 ## Keeping track of what is set up
 
 The **Homekeeper** entry in the sidebar (admins only) lists People, Modules, Duties and Billers in
