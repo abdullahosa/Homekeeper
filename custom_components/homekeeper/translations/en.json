@@ -170,7 +170,13 @@
             "completes": "Income only: duty IDs completed when money arrives",
             "remind": "Remind (e.g. -3d,0d)",
             "escalate_after": "Escalate to admins after overdue by (e.g. 2d)",
+            "login_url": "Login page (optional)",
+            "login_note": "Where the password is kept (optional)",
             "enabled": "Enabled"
+          },
+          "data_description": {
+            "login_url": "The company's sign-in page, starting with https://. Shown on the bill's to-do and as a Log in button on the dashboard card.",
+            "login_note": "Where the family finds the password, e.g. Bitwarden > Home Bills > Duke Energy. Do not type the password here: every Home Assistant user can read this."
           }
         },
         "first_module": {
@@ -185,7 +191,8 @@
       "error": {
         "bad_id": "Use lowercase letters, numbers, - and _.",
         "id_exists": "That ID is already used.",
-        "bad_details": "Check the numbers and reminder durations."
+        "bad_details": "Check the numbers and reminder durations.",
+        "bad_url": "Use a full web address starting with https://"
       },
       "abort": {
         "reconfigure_successful": "Saved."

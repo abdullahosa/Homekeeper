@@ -377,6 +377,26 @@ class Engine:
             biller=biller.id,
         )
 
+    def login_for(self, duty: Duty) -> Biller | None:
+        """The biller whose account someone would log in to for this duty: the bill's
+        own biller, or an income biller (rent) that completes it."""
+        if duty.biller:
+            biller = self.billers.get(duty.biller)
+            return biller if biller and (biller.login_url or biller.login_note) else None
+        for biller in self.billers.values():
+            if biller.enabled and duty.id in biller.completes and (biller.login_url or biller.login_note):
+                return biller
+        return None
+
+    def login_lines(self, duty: Duty) -> list[str]:
+        biller = self.login_for(duty)
+        if biller is None:
+            return []
+        return [line for line in (
+            f"Log in: {biller.login_url}" if biller.login_url else "",
+            biller.login_note,
+        ) if line]
+
     def add_biller(self, biller: Biller, today: date) -> None:
         self.billers[biller.id] = biller
         self.biller_since.setdefault(biller.id, today.isoformat())

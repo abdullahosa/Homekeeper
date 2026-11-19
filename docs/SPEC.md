@@ -103,7 +103,7 @@ Mobile push per person, in their language. Actions: **Done**, **Snooze 1 day**, 
 
 Implemented. BillBot reads, Homekeeper runs.
 
-- A **biller** is a config subentry: name as BillBot files it, kind (`bill` or `income`), sender domains, owners, expected cadence and grace, reminders, escalation. A `bill` biller becomes a "Pay ..." duty (`bill-<id>`); an `income` biller lists the duties it completes (rent).
+- A **biller** is a config subentry: name as BillBot files it, kind (`bill` or `income`), sender domains, owners, expected cadence and grace, reminders, escalation. A `bill` biller becomes a "Pay ..." duty (`bill-<id>`); an `income` biller lists the duties it completes (rent). Optional `login_url` (http/https only) and `login_note` say where to check the account and where the password is kept; they show on the related to-do, calendar entry and card row. Passwords are never stored.
 - Homekeeper publishes a retained `homekeeper/billers` message (`{"version":1,"billers":{domain:name}}`). An optional BillBot add-on (`billbot/`) reads it, so billers are managed in Home Assistant only. Without the add-on BillBot keeps using `billers.json`.
 - Homekeeper subscribes to `billbot/+/state` and `billbot/status`. A `due`/`overdue` state opens the duty with the amount; `paid` or `autopay` closes it (method `auto`); a newer bill supersedes an unpaid older one; replayed retained messages change nothing. An income `paid` state completes the listed duties only when the payment is within 7 days of their due date.
 - Marking a bill done in Homekeeper (button, to-do, NFC, voice, service) presses BillBot's `billbot/<name>/mark_paid` so BillBot stays the source of truth. A payment BillBot detects closes the duty without pressing again.

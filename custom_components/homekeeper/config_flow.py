@@ -30,6 +30,7 @@ from .const import (
 )
 from .engine import Biller, Duty
 from .engine import schedule as sch
+from .engine.models import is_web_url
 from .labels import entry_label
 
 SLUG = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
@@ -527,6 +528,9 @@ class BillerFlow(_BaseSubentryFlow):
                 grace = int(user_input.get("grace_days") or 5)
             except ValueError:
                 errors["base"] = "bad_details"
+            login_url = (user_input.get("login_url") or "").strip()
+            if login_url and not is_web_url(login_url):
+                errors["login_url"] = "bad_url"
             if not errors:
                 data = Biller(
                     id=ident,
@@ -542,37 +546,56 @@ class BillerFlow(_BaseSubentryFlow):
                     remind=remind,
                     escalate=escalate,
                     enabled=user_input.get("enabled", True),
+                    login_url=login_url,
+                    login_note=(user_input.get("login_note") or "").strip(),
                 ).to_dict()
                 return self._finish(data["name"], data, ident)
         esc = old.get("escalate") or []
+        typed = user_input or {}
+
+        def cur(key: str, saved: Any) -> Any:
+            """What to show: what was just typed (after an error), else the saved value."""
+            return typed[key] if key in typed else saved
+
         fields: dict[Any, Any] = {}
         if not old:
-            fields[vol.Required("id")] = _text()
+            fields[vol.Required("id", default=typed.get("id", ""))] = _text()
         fields.update(
             {
-                vol.Required("name", default=old.get("name", "")): _text(),
-                vol.Required("kind", default=old.get("kind", "bill")): _select(["bill", "income"]),
+                vol.Required("name", default=cur("name", old.get("name", ""))): _text(),
+                vol.Required("kind", default=cur("kind", old.get("kind", "bill"))): _select(
+                    ["bill", "income"]
+                ),
                 vol.Required(
                     "module",
-                    default=old.get("module") or ("bills" if "bills" in _modules(entry) else _modules(entry)[0]),
+                    default=cur(
+                        "module",
+                        old.get("module") or ("bills" if "bills" in _modules(entry) else _modules(entry)[0]),
+                    ),
                 ): _select(_modules(entry)),
-                vol.Optional("sender_domains", default=",".join(old.get("sender_domains", []))): _text(),
-                vol.Optional("owners", default=old.get("owners", [])): _select(
+                vol.Optional(
+                    "sender_domains", default=cur("sender_domains", ",".join(old.get("sender_domains", [])))
+                ): _text(),
+                vol.Optional("owners", default=cur("owners", old.get("owners", []))): _select(
                     _people(entry), multiple=True
                 ),
-                vol.Optional("observers", default=old.get("observers", [])): _select(
+                vol.Optional("observers", default=cur("observers", old.get("observers", []))): _select(
                     _people(entry), multiple=True
                 ),
-                vol.Optional("cadence_days", default=str(old.get("cadence_days") or "")): _text(),
-                vol.Optional("grace_days", default=str(old.get("grace_days", 5))): _text(),
-                vol.Optional("completes", default=",".join(old.get("completes", []))): _text(),
                 vol.Optional(
-                    "remind", default=",".join(old.get("remind", ["-3d", "0d"]))
+                    "cadence_days", default=cur("cadence_days", str(old.get("cadence_days") or ""))
+                ): _text(),
+                vol.Optional("grace_days", default=cur("grace_days", str(old.get("grace_days", 5)))): _text(),
+                vol.Optional("completes", default=cur("completes", ",".join(old.get("completes", [])))): _text(),
+                vol.Optional(
+                    "remind", default=cur("remind", ",".join(old.get("remind", ["-3d", "0d"])))
                 ): _text(),
                 vol.Optional(
-                    "escalate_after", default=esc[0]["after"] if esc else "2d"
+                    "escalate_after", default=cur("escalate_after", esc[0]["after"] if esc else "2d")
                 ): _text(),
-                vol.Optional("enabled", default=old.get("enabled", True)): selector.BooleanSelector(),
+                vol.Optional("login_url", default=cur("login_url", old.get("login_url", ""))): _text(),
+                vol.Optional("login_note", default=cur("login_note", old.get("login_note", ""))): _text(True),
+                vol.Optional("enabled", default=cur("enabled", old.get("enabled", True))): selector.BooleanSelector(),
             }
         )
         return self.async_show_form(

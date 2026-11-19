@@ -175,3 +175,46 @@ def test_wall_mode_has_big_touch_targets_and_screenshots(browser):
     page2.screenshot(path=str(SHOTS / "list.png"), full_page=True)
     page3 = _page(browser, {"mode": "list", "language": "ar"}, scale=2)
     page3.screenshot(path=str(SHOTS / "list-ar.png"), full_page=True)
+
+
+def test_bill_row_has_log_in_link_and_password_note(browser):
+    page = _page(browser, {"mode": "list"})
+    page.evaluate("""() => {
+      const duke = window.DATA.items.find(i => i.duty_id === 'bill-duke');
+      duke.login_url = 'https://example.com/login';
+      duke.login_note = 'Bitwarden > Home Bills > Duke Energy';
+      const mow = window.DATA.items.find(i => i.duty_id === 'mow');
+      mow.login_url = 'javascript:alert(1)';
+      window.fire();
+    }""")
+    row = "homekeeper-card >> .row:has-text('Pay Duke Energy')"
+    page.wait_for_selector(f"{row} >> .login a")
+    link = page.locator(f"{row} >> .login a")
+    assert link.inner_text() == "Log in ↗"
+    assert link.get_attribute("href") == "https://example.com/login"
+    assert link.get_attribute("target") == "_blank"
+    assert link.get_attribute("rel") == "noopener noreferrer"
+    assert "Bitwarden > Home Bills > Duke Energy" in page.inner_text(row)
+    # a non-web link is never rendered
+    assert page.locator("homekeeper-card >> .row:has-text('Mow the lawn') >> a").count() == 0
+    # a note alone shows without a link
+    page.evaluate("""() => {
+      const f = window.DATA.items.find(i => i.duty_id === 'hvac');
+      f.login_note = 'Ask Marwah'; window.fire();
+    }""")
+    page.wait_for_function("document.querySelector('homekeeper-card').shadowRoot.textContent.includes('Ask Marwah')")
+    assert page.locator("homekeeper-card >> .row:has-text('Change AC filters') >> a").count() == 0
+    # rows without a login have no link
+    assert page.locator("homekeeper-card >> .row:has-text('Put bins out') >> .login").count() == 0
+    SHOTS.mkdir(exist_ok=True)
+    page.screenshot(path=str(SHOTS / "card-login.png"))
+
+
+def test_log_in_label_in_arabic(browser):
+    page = _page(browser, {"mode": "list", "language": "ar"})
+    page.evaluate("""() => {
+      window.DATA.items.find(i => i.duty_id === 'bill-duke').login_url = 'https://example.com/login';
+      window.fire();
+    }""")
+    page.wait_for_selector("homekeeper-card >> .login a")
+    assert page.inner_text("homekeeper-card >> .login a") == "تسجيل الدخول ↗"

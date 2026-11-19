@@ -16,7 +16,7 @@ const STR = {
     done: "Done", confirm: "Tap again to confirm", snooze: "Snooze 1 day", snoozed: "Snoozed",
     caught_up: "All caught up", upcoming: "Coming up", everyone: "Everyone", all: "All",
     owner: "Owner", problems: "Needs attention", loading: "Loading…", not_ready: "Homekeeper is not set up",
-    failed: "That did not work", until: "until",
+    failed: "That did not work", until: "until", login: "Log in",
   },
   ar: {
     overdue: "متأخرة", due_today: "مستحقة اليوم", in_days: (n) => `بعد ${n} يوم`,
@@ -24,7 +24,7 @@ const STR = {
     done: "تم", confirm: "اضغط مرة أخرى للتأكيد", snooze: "تأجيل يوم", snoozed: "مؤجلة",
     caught_up: "كل شيء منجز", upcoming: "قريباً", everyone: "الجميع", all: "الكل",
     owner: "المسؤول", problems: "يحتاج انتباه", loading: "جارٍ التحميل…", not_ready: "Homekeeper غير مُعد",
-    failed: "لم تنجح العملية", until: "حتى",
+    failed: "لم تنجح العملية", until: "حتى", login: "تسجيل الدخول",
   },
 };
 
@@ -60,6 +60,11 @@ button.act { font: inherit; border-radius: 8px; border: 0; cursor: pointer; padd
   background: var(--primary-color, #03a9f4); color: var(--text-primary-color, #fff); font-weight: 600; }
 button.act.ghost { background: transparent; color: var(--primary-text-color, #222);
   border: 1px solid var(--divider-color, #0004); font-weight: 500; }
+.login { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 12px; margin-top: 4px;
+  font-size: .85rem; color: var(--secondary-text-color, #666); overflow-wrap: anywhere; }
+.login a { color: var(--primary-color, #03a9f4); font-weight: 600; text-decoration: none;
+  display: inline-flex; align-items: center; min-height: 32px; }
+.login a:focus-visible { outline: 3px solid var(--primary-color, #03a9f4); outline-offset: 2px; }
 button.act.confirming { background: var(--success-color, #2e7d32); }
 button.act:focus-visible, .chip:focus-visible { outline: 3px solid var(--primary-color, #03a9f4); outline-offset: 2px; }
 h3 { margin: 16px 0 8px; font-size: .9rem; text-transform: uppercase; letter-spacing: .05em;
@@ -85,6 +90,8 @@ h3 { margin: 16px 0 8px; font-size: .9rem; text-transform: uppercase; letter-spa
 .wall .tile .meta { font-size: 1.15rem; }
 .wall button.act { font-size: 1.4rem; min-height: 64px; width: 100%; border-radius: 14px; }
 .wall button.act.ghost { font-size: 1rem; min-height: 48px; }
+.wall .login { font-size: 1rem; }
+.wall .login a { min-height: 44px; }
 .wall .empty { font-size: 2.2rem; padding: 64px 8px; }
 .wall h3 { font-size: 1.1rem; }
 `;
@@ -231,6 +238,27 @@ class HomekeeperCard extends HTMLElement {
     return box;
   }
 
+  // Where to check the bill and where the password is kept. Never the password itself.
+  _login(item) {
+    const url = String(item.login_url || "").trim();
+    const web = /^https?:\/\/./i.test(url);  // never a javascript: or other link
+    if (!web && !item.login_note) { return null; }
+    const box = document.createElement("div");
+    box.className = "login";
+    if (web) {
+      const a = document.createElement("a");
+      a.textContent = `${this._t.login} ↗`;
+      a.href = url; a.target = "_blank"; a.rel = "noopener noreferrer";
+      box.append(a);
+    }
+    if (item.login_note) {
+      const note = document.createElement("span");
+      note.textContent = `🔑 ${item.login_note}`;
+      box.append(note);
+    }
+    return box;
+  }
+
   _meta(item) {
     const t = this._t;
     const meta = document.createElement("div");
@@ -312,6 +340,8 @@ class HomekeeperCard extends HTMLElement {
         const title = document.createElement("div");
         title.className = "title"; title.textContent = this._title(item);
         text.append(title, this._meta(item));
+        const login = this._login(item);
+        if (login) { text.append(login); }
         row.append(text, this._actions(item));
         box.append(row);
       });

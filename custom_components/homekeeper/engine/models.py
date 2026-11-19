@@ -181,6 +181,9 @@ class Biller:
     )
     title: dict[str, str] = field(default_factory=dict)
     enabled: bool = True
+    # Where to check the account, and where the password is kept. Never the password.
+    login_url: str = ""
+    login_note: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {f.name: getattr(self, f.name) for f in fields(self)}
@@ -193,4 +196,12 @@ class Biller:
             raise ValueError(f"biller kind must be bill or income, not {biller.kind!r}")
         if not biller.name:
             raise ValueError("biller needs a name")
+        if biller.login_url and not is_web_url(biller.login_url):
+            raise ValueError("login_url must start with http:// or https://")
         return biller
+
+
+def is_web_url(text: str) -> bool:
+    """Only plain web links, so a dashboard link can never run script."""
+    lowered = text.strip().lower()
+    return lowered.startswith(("https://", "http://")) and len(lowered) > len("https://")
