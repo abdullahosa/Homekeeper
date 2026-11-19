@@ -56,7 +56,7 @@ def test_opens_the_evening_before_with_what_is_collected():
     e.apply_calendar("bins", WEEK, at("2026-11-19"))
     occ = e.occurrences["bins"]
     assert occ.due == date(2026, 11, 23) and occ.opens == date(2026, 11, 23)
-    assert occ.meta == {"event": "2026-11-24", "what": "Garbage, Recycling"}
+    assert occ.meta == {"event": "2026-11-24", "what": "Garbage + Recycling"}
     assert e.state("bins", date(2026, 11, 22)) == "upcoming"
     assert e.state("bins", date(2026, 11, 23)) == "due"
     assert e.state("bins", date(2026, 11, 24)) == "overdue"  # pickup morning, still not out
@@ -137,7 +137,7 @@ def test_title_text_updates_without_resetting():
     occ = e.occurrences["bins"]
     e.apply_calendar("bins", [(date(2026, 11, 24), "Garbage, Recycling, Yard Waste")] + WEEK[1:], at("2026-11-23", 8))
     assert e.occurrences["bins"] is occ and occ.opened_notified
-    assert occ.meta["what"] == "Garbage, Recycling, Yard Waste"
+    assert occ.meta["what"] == "Garbage + Recycling + Yard waste"
 
 
 def test_calendar_lines_and_overview_carry_what():
@@ -145,9 +145,9 @@ def test_calendar_lines_and_overview_carry_what():
 
     e = make()
     e.apply_calendar("bins", WEEK, at("2026-11-23"))
-    assert e.calendar_lines(e.duties["bins"]) == ["Collecting: Garbage, Recycling on 2026-11-24"]
+    assert e.calendar_lines(e.duties["bins"]) == ["Collecting: Garbage + Recycling on 2026-11-24"]
     item = next(i for i in build_overview(e, date(2026, 11, 23))["items"] if i["duty_id"] == "bins")
-    assert item["what"] == "Garbage, Recycling" and item["event"] == "2026-11-24"
+    assert item["what"] == "Garbage + Recycling" and item["event"] == "2026-11-24"
 
 
 def test_survives_save_and_load():
@@ -155,3 +155,43 @@ def test_survives_save_and_load():
     e.apply_calendar("bins", WEEK, at("2026-11-19"))
     again = Engine.from_dict(e.to_dict())
     assert again.occurrences["bins"].meta["event"] == "2026-11-24"
+
+
+# What Concord's CARTology (ReCollect) calendar really says, Nov-Dec 2026.
+CONCORD = [
+    (date(2026, 11, 21), "Hhw collection - concord"),
+    (date(2026, 11, 23), "Loose leaf - wednesday week - day 1"),
+    (date(2026, 11, 25), "Loose leaf - wednesday week - day 3, yard waste - concord, bulky waste - concord, "
+                         "recycling - concord, and garbage - concord"),
+    (date(2026, 12, 2), "Loose leaf - wednesday week - day 7, hhw collection - concord, yard waste - concord, "
+                        "and garbage - concord"),
+    (date(2026, 12, 9), "Yard waste - concord, bulky waste - concord, recycling - concord, and garbage - concord"),
+]
+
+
+def test_concord_calendar_with_match_garbage():
+    e = make(match=["garbage"])
+    e.apply_calendar("bins", CONCORD, at("2026-11-19"))
+    occ = e.occurrences["bins"]
+    assert occ.meta["event"] == "2026-11-25" and occ.due == date(2026, 11, 24)  # Tuesday evening
+    assert occ.meta["what"] == "Garbage + Recycling + Yard waste + Bulky waste"
+    e.complete("bins", "a", at("2026-11-24", 19), method="button")
+    e.apply_calendar("bins", CONCORD, at("2026-11-24", 19))
+    assert e.occurrences["bins"].meta["what"] == "Garbage + Yard waste"  # leaf and drop-off days left out
+
+
+def test_without_match_a_drop_off_day_would_open_it():
+    e = make()
+    e.apply_calendar("bins", CONCORD, at("2026-11-19"))
+    assert e.occurrences["bins"].meta["event"] == "2026-11-21"
+    assert e.occurrences["bins"].meta["what"] == "Hhw collection"  # unknown words shown as written
+
+
+def test_tidy_and_translate():
+    from engine.collected import tidy, translate
+
+    assert tidy(["Garbage", "Recycling"]) == ["Garbage", "Recycling"]
+    assert tidy(["Trash & Yard Debris"]) == ["Garbage", "Yard waste"]
+    assert tidy(["Street sweeping - zone 3"]) == ["Street sweeping"]
+    assert translate("Garbage + Recycling + Bulky waste", "ar") == "النفايات + إعادة التدوير + الأغراض الكبيرة"
+    assert translate("Garbage + Street sweeping", "en") == "Garbage + Street sweeping"

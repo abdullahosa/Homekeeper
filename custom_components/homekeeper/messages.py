@@ -5,6 +5,8 @@ before go-live."""
 
 from __future__ import annotations
 
+from .engine.collected import translate as translate_collected
+
 MESSAGES: dict[str, dict[str, str]] = {
     "opened": {"en": "New task: {title}", "ar": "مهمة جديدة: {title}"},
     "reminder": {
@@ -26,30 +28,9 @@ MESSAGES: dict[str, dict[str, str]] = {
     },
 }
 
-# What a trash calendar says is collected, in Arabic. Unknown words stay as written.
-COLLECTED_AR = {
-    "garbage": "النفايات",
-    "trash": "النفايات",
-    "refuse": "النفايات",
-    "recycling": "إعادة التدوير",
-    "recycle": "إعادة التدوير",
-    "yard waste": "مخلفات الحديقة",
-    "yard": "مخلفات الحديقة",
-    "bulky": "الأغراض الكبيرة",
-    "bulky items": "الأغراض الكبيرة",
-    "compost": "السماد",
-    "glass": "الزجاج",
-}
-
-
 def collected(text: str, language: str) -> str:
-    """'Garbage, Recycling' -> 'Garbage + Recycling' (or Arabic)."""
-    import re
-
-    parts = [p.strip() for p in re.split(r",|\+|&|\band\b|/", text or "") if p.strip()]
-    if language == "ar":
-        parts = [COLLECTED_AR.get(p.lower(), p) for p in parts]
-    return " + ".join(dict.fromkeys(parts))
+    """'Garbage + Recycling' (as the engine tidied it) in the reader's language."""
+    return translate_collected(text, language)
 
 BUTTONS: dict[str, dict[str, str]] = {
     "done": {"en": "Done", "ar": "تم"},

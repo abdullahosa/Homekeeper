@@ -129,7 +129,7 @@ async def test_todo_item_says_what_is_collected(hass, entry_factory, calendar_ev
         "todo", "get_items", {"entity_id": "todo.homekeeper_home"}, blocking=True, return_response=True
     ))["todo.homekeeper_home"]["items"]
     bins = next(i for i in items if i["uid"] == "bins")
-    assert "Collecting: Garbage, Recycling on 2026-11-24" in bins["description"]
+    assert "Collecting: Garbage + Recycling on 2026-11-24" in bins["description"]
 
 
 async def test_duty_form_follows_a_calendar(hass, entry_factory, calendar_events, freezer):
