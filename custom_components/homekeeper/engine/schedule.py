@@ -80,7 +80,7 @@ def validate(sched: dict[str, Any]) -> None:
                 _md(sched[key], 2001)
     if kind == "calendar":
         if not str(sched.get("calendar", "")).startswith("calendar."):
-            raise ValueError("calendar needs a calendar entity, e.g. calendar.cartology")
+            raise ValueError("calendar needs a calendar entity, e.g. calendar.trash_pickup")
         value, unit = parse_duration(sched.get("lead", "1d"))
         if unit not in ("d", "w") or value < 0:
             raise ValueError("lead must be days or weeks before the event, e.g. 1d")

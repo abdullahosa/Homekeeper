@@ -19,13 +19,13 @@ EVENTS = [
 
 
 class FakeCalendar(CalendarEntity):
-    """What the Remote Calendar integration gives you for the CARTology link."""
+    """What the Remote Calendar integration gives you for a city trash calendar link."""
 
-    _attr_name = "CARTology"
+    _attr_name = "Trash pickup"
 
     def __init__(self, state):
         self._state = state
-        self.entity_id = "calendar.cartology"
+        self.entity_id = "calendar.trash_pickup"
 
     @property
     def event(self):
@@ -54,7 +54,7 @@ def bins_entry(entry_factory):
         sub("duty", "bins", {
             "module": "home",
             "title": {"en": "Put the bins out", "ar": "إخراج الحاويات"},
-            "schedule": {"type": "calendar", "calendar": "calendar.cartology", "lead": "1d", "notify_at": "18:00"},
+            "schedule": {"type": "calendar", "calendar": "calendar.trash_pickup", "lead": "1d", "notify_at": "18:00"},
             "remind": [],
             "done_by": ["button", "nfc"],
         }, "Put the bins out"),
@@ -143,7 +143,7 @@ async def test_duty_form_follows_a_calendar(hass, entry_factory, calendar_events
     assert r["step_id"] == "schedule"
     assert "opens_before" not in {str(k) for k in r["data_schema"].schema}
     r = await hass.config_entries.subentries.async_configure(r["flow_id"], {
-        "calendar": "calendar.cartology", "match": "Recycling", "lead": "1d", "notify_at": "18:30:00",
+        "calendar": "calendar.trash_pickup", "match": "Recycling", "lead": "1d", "notify_at": "18:30:00",
     })
     assert r["step_id"] == "details"
     r = await hass.config_entries.subentries.async_configure(r["flow_id"], {"done_by": ["button"]})
@@ -151,7 +151,7 @@ async def test_duty_form_follows_a_calendar(hass, entry_factory, calendar_events
     await hass.async_block_till_done()
     rt = get_runtime(hass, entry.entry_id)
     assert rt.engine.duties["recycling"].schedule == {
-        "type": "calendar", "calendar": "calendar.cartology", "match": ["Recycling"], "lead": "1d",
+        "type": "calendar", "calendar": "calendar.trash_pickup", "match": ["Recycling"], "lead": "1d",
         "notify_at": "18:30",
     }
     await rt.async_tick(local("2026-11-19T10:00"))

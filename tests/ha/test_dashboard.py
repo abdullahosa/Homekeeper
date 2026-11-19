@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from homeassistant.setup import async_setup_component
 
 from custom_components.homekeeper.const import DOMAIN, EVENT_CHANGED, STATIC_URL
@@ -125,17 +127,23 @@ async def test_setup_page_is_registered_as_an_admin_sidebar_panel(hass):
     hass.config.components.add("frontend")
     with (
         patch("homeassistant.components.panel_custom.async_register_panel") as panel,
-        patch("homeassistant.components.frontend.add_extra_js_url"),
+        patch("homeassistant.components.frontend.add_extra_js_url") as js,
     ):
         await _async_register_frontend(hass)
     panel.assert_awaited_once()
+    import hashlib
+
+    folder = Path(__file__).parents[2] / "custom_components/homekeeper/frontend"
+    card_url = js.call_args.args[1]
+    assert card_url == f"{STATIC_URL}/homekeeper-card.js?v=" + hashlib.sha256(
+        (folder / "homekeeper-card.js").read_bytes()
+    ).hexdigest()[:12]  # changes whenever the card changes, so browsers fetch the new one
     kwargs = panel.call_args.kwargs
     assert kwargs["frontend_url_path"] == PANEL_PATH
     assert kwargs["webcomponent_name"] == "homekeeper-setup"
     assert kwargs["require_admin"] is True
-    assert kwargs["module_url"].startswith(f"{STATIC_URL}/{PANEL_FILE}")
-
-    from pathlib import Path
+    assert kwargs["module_url"].startswith(f"{STATIC_URL}/{PANEL_FILE}?v=")
+    assert kwargs["module_url"] != f"{STATIC_URL}/{PANEL_FILE}?v=0.1.0"
 
     page = Path(__file__).parents[2] / "custom_components/homekeeper/frontend" / PANEL_FILE
     assert 'customElements.define("homekeeper-setup"' in page.read_text()

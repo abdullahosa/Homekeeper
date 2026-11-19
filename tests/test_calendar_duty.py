@@ -1,4 +1,4 @@
-"""Duties that follow a calendar, e.g. trash pickup from CARTology (ReCollect)."""
+"""Duties that follow a calendar, e.g. a city trash pickup calendar (ReCollect)."""
 
 from datetime import date, datetime
 
@@ -18,7 +18,7 @@ def make(**sched):
     e.add_module(Module("home", {"en": "Home"}, owners=["a"]))
     e.add_duty(
         Duty(id="bins", module="home", title={"en": "Put the bins out"},
-             schedule={"type": "calendar", "calendar": "calendar.cartology", "notify_at": "18:00", **sched}),
+             schedule={"type": "calendar", "calendar": "calendar.trash_pickup", "notify_at": "18:00", **sched}),
         date(2026, 11, 19),
     )
     return e
@@ -157,32 +157,32 @@ def test_survives_save_and_load():
     assert again.occurrences["bins"].meta["event"] == "2026-11-24"
 
 
-# What Concord's CARTology (ReCollect) calendar really says, Nov-Dec 2026.
-CONCORD = [
-    (date(2026, 11, 21), "Hhw collection - concord"),
-    (date(2026, 11, 23), "Loose leaf - wednesday week - day 1"),
-    (date(2026, 11, 25), "Loose leaf - wednesday week - day 3, yard waste - concord, bulky waste - concord, "
-                         "recycling - concord, and garbage - concord"),
-    (date(2026, 12, 2), "Loose leaf - wednesday week - day 7, hhw collection - concord, yard waste - concord, "
-                        "and garbage - concord"),
-    (date(2026, 12, 9), "Yard waste - concord, bulky waste - concord, recycling - concord, and garbage - concord"),
+# What a real ReCollect city trash calendar says (area name changed).
+RECOLLECT = [
+    (date(2026, 11, 21), "Hhw collection - northside"),
+    (date(2026, 11, 23), "Loose leaf - zone b - day 1"),
+    (date(2026, 11, 25), "Loose leaf - zone b - day 3, yard waste - northside, bulky waste - northside, "
+                         "recycling - northside, and garbage - northside"),
+    (date(2026, 12, 2), "Loose leaf - zone b - day 7, hhw collection - northside, yard waste - northside, "
+                        "and garbage - northside"),
+    (date(2026, 12, 9), "Yard waste - northside, bulky waste - northside, recycling - northside, and garbage - northside"),
 ]
 
 
-def test_concord_calendar_with_match_garbage():
+def test_recollect_calendar_with_match_garbage():
     e = make(match=["garbage"])
-    e.apply_calendar("bins", CONCORD, at("2026-11-19"))
+    e.apply_calendar("bins", RECOLLECT, at("2026-11-19"))
     occ = e.occurrences["bins"]
     assert occ.meta["event"] == "2026-11-25" and occ.due == date(2026, 11, 24)  # Tuesday evening
     assert occ.meta["what"] == "Garbage + Recycling + Yard waste + Bulky waste"
     e.complete("bins", "a", at("2026-11-24", 19), method="button")
-    e.apply_calendar("bins", CONCORD, at("2026-11-24", 19))
+    e.apply_calendar("bins", RECOLLECT, at("2026-11-24", 19))
     assert e.occurrences["bins"].meta["what"] == "Garbage + Yard waste"  # leaf and drop-off days left out
 
 
 def test_without_match_a_drop_off_day_would_open_it():
     e = make()
-    e.apply_calendar("bins", CONCORD, at("2026-11-19"))
+    e.apply_calendar("bins", RECOLLECT, at("2026-11-19"))
     assert e.occurrences["bins"].meta["event"] == "2026-11-21"
     assert e.occurrences["bins"].meta["what"] == "Hhw collection"  # unknown words shown as written
 

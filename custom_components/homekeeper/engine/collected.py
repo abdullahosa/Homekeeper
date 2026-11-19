@@ -1,7 +1,7 @@
 """Turn what a trash calendar says into the carts to put out. Pure Python.
 
-ReCollect (CARTology) titles read like "Loose leaf - wednesday week - day 3, yard waste -
-concord, bulky waste - concord, recycling - concord, and garbage - concord". This keeps
+ReCollect titles read like "Loose leaf - zone b - day 3, yard waste - northside, bulky
+waste - northside, recycling - northside, and garbage - northside". This keeps
 the carts ("Garbage + Recycling + Yard waste + Bulky waste") and drops the rest (leaf
 vacuum days, drop-off events, the area name). A calendar whose words it does not know
 is shown as written.
@@ -46,7 +46,7 @@ def tidy(summaries: list[str]) -> list[str]:
     names: list[str] = []
     for summary in summaries:
         for piece in _SPLIT.split(summary or ""):
-            name = piece.split(" - ")[0].strip()  # "yard waste - concord" -> "yard waste"
+            name = piece.split(" - ")[0].strip()  # "yard waste - northside" -> "yard waste"
             if name:
                 names.append(name)
     known = {c for n in names if (c := _canonical(n))}
