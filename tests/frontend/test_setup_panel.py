@@ -16,7 +16,7 @@ DATA = {
     "todo_count": 2,
     "sections": [
         {"kind": "people", "items": [
-            {"id": "osamah", "title": "Osamah", "detail": "Owner · English", "issues": []},
+            {"id": "sam", "title": "Sam", "detail": "Owner · English", "issues": []},
             {"id": "dad", "title": "Dad", "detail": "Owner · Arabic", "issues": ["no_notify"]},
         ]},
         {"kind": "modules", "items": [

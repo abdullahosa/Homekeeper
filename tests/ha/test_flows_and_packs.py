@@ -78,13 +78,13 @@ async def test_person_id_is_made_from_the_name(hass, entry_factory):
         return await hass.config_entries.subentries.async_configure(
             r["flow_id"], {"name": name, "role": "owner", "language": "en", **extra})
 
-    assert (await add("Osamah"))["type"] is FlowResultType.CREATE_ENTRY
-    assert (await add("Osamah"))["type"] is FlowResultType.CREATE_ENTRY  # same name again
+    assert (await add("Sam"))["type"] is FlowResultType.CREATE_ENTRY
+    assert (await add("Sam"))["type"] is FlowResultType.CREATE_ENTRY  # same name again
     assert (await add("أحمد"))["type"] is FlowResultType.CREATE_ENTRY
     assert (await add("!!!"))["type"] is FlowResultType.CREATE_ENTRY
     await hass.async_block_till_done()
     ids = {s.data["id"] for s in entry.subentries.values() if s.subentry_type == "person"}
-    assert {"osamah", "osamah_2", "hmd", "person"} <= ids  # Arabic names are transliterated
+    assert {"sam", "sam_2", "hmd", "person"} <= ids  # Arabic names are transliterated
 
 
 async def test_quiet_hours_need_both_times(hass, entry_factory):

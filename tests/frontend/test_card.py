@@ -17,12 +17,12 @@ SHOTS = pathlib.Path(__file__).parent / "out"
 
 DATA = {
     "today": "2026-11-14",
-    "me": "osamah",
+    "me": "sam",
     "health": {"ok": True, "problems": []},
     "people": [
-        {"id": "osamah", "name": "Osamah"},
+        {"id": "sam", "name": "Sam"},
         {"id": "dad", "name": "Dad"},
-        {"id": "marwah", "name": "Marwah"},
+        {"id": "alex", "name": "Alex"},
     ],
     "modules": [
         {"id": "lawn", "title": {"en": "Lawn", "ar": "العشب"}},
@@ -32,7 +32,7 @@ DATA = {
     "counts": {"overdue": 1, "due": 2},
     "items": [
         {"duty_id": "rent-check", "module": "rental", "module_title": {"en": "Rental"},
-         "title": {"en": "Confirm rent arrived", "ar": "تأكيد وصول الإيجار"}, "owners": ["osamah", "dad"],
+         "title": {"en": "Confirm rent arrived", "ar": "تأكيد وصول الإيجار"}, "owners": ["sam", "dad"],
          "state": "overdue", "due": "2026-11-12", "days": -2, "snoozed_until": None, "amount": None,
          "how_to": "", "done_by": ["button"], "biller": None},
         {"duty_id": "bill-duke", "module": "bills", "module_title": {"en": "Bills"},
@@ -40,15 +40,15 @@ DATA = {
          "state": "due", "due": "2026-11-14", "days": 0, "snoozed_until": None, "amount": 142.5,
          "how_to": "", "done_by": ["button"], "biller": "duke"},
         {"duty_id": "mow", "module": "lawn", "module_title": {"en": "Lawn"},
-         "title": {"en": "Mow the lawn", "ar": "قص العشب"}, "owners": ["osamah"],
+         "title": {"en": "Mow the lawn", "ar": "قص العشب"}, "owners": ["sam"],
          "state": "due", "due": "2026-11-14", "days": 0, "snoozed_until": None, "amount": None,
          "how_to": "", "done_by": ["button"], "biller": None},
         {"duty_id": "hvac", "module": "rental", "module_title": {"en": "Rental"},
-         "title": {"en": "Change AC filters", "ar": "تغيير فلاتر المكيف"}, "owners": ["marwah"],
+         "title": {"en": "Change AC filters", "ar": "تغيير فلاتر المكيف"}, "owners": ["alex"],
          "state": "upcoming", "due": "2026-11-20", "days": 6, "snoozed_until": None, "amount": None,
          "how_to": "", "done_by": ["button"], "biller": None},
         {"duty_id": "trash", "module": "lawn", "module_title": {"en": "Lawn"},
-         "title": {"en": "Put bins out", "ar": "إخراج الحاويات"}, "owners": ["osamah"],
+         "title": {"en": "Put bins out", "ar": "إخراج الحاويات"}, "owners": ["sam"],
          "state": "snoozed", "due": "2026-11-13", "days": -1, "snoozed_until": "2026-11-15",
          "amount": None, "how_to": "", "done_by": ["button"], "biller": None},
     ],
@@ -126,7 +126,7 @@ def test_done_needs_two_taps_then_calls_service(browser):
     page.click(f"{row} >> button.act:not(.ghost)")
     page.wait_for_function("!document.querySelector('homekeeper-card').shadowRoot.textContent.includes('Mow the lawn')")
     calls = [c for c in page.evaluate("window.calls") if c[0] == "homekeeper"]
-    assert calls == [["homekeeper", "complete", {"duty_id": "mow", "method": "button", "by": "osamah"}]]
+    assert calls == [["homekeeper", "complete", {"duty_id": "mow", "method": "button", "by": "sam"}]]
 
 
 def test_single_tap_when_confirm_disabled_and_snooze(browser):
@@ -200,9 +200,9 @@ def test_bill_row_has_log_in_link_and_password_note(browser):
     # a note alone shows without a link
     page.evaluate("""() => {
       const f = window.DATA.items.find(i => i.duty_id === 'hvac');
-      f.login_note = 'Ask Marwah'; window.fire();
+      f.login_note = 'Ask Alex'; window.fire();
     }""")
-    page.wait_for_function("document.querySelector('homekeeper-card').shadowRoot.textContent.includes('Ask Marwah')")
+    page.wait_for_function("document.querySelector('homekeeper-card').shadowRoot.textContent.includes('Ask Alex')")
     assert page.locator("homekeeper-card >> .row:has-text('Change AC filters') >> a").count() == 0
     # rows without a login have no link
     assert page.locator("homekeeper-card >> .row:has-text('Put bins out') >> .login").count() == 0
