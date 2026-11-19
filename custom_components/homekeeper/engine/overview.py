@@ -23,6 +23,7 @@ def build_overview(engine: Engine, today: date, horizon_days: int = 14) -> dict[
         if state == "idle":
             continue
         module = engine.modules.get(duty.module)
+        login = engine.login_for(duty)
         items.append(
             {
                 "duty_id": duty.id,
@@ -38,6 +39,8 @@ def build_overview(engine: Engine, today: date, horizon_days: int = 14) -> dict[
                 "how_to": duty.how_to,
                 "done_by": duty.done_by,
                 "biller": duty.biller,
+                "login_url": login.login_url if login else "",
+                "login_note": login.login_note if login else "",
             }
         )
     items.sort(key=lambda i: (_ORDER.get(i["state"], 9), i["due"], i["duty_id"]))

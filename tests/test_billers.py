@@ -137,3 +137,67 @@ def test_biller_round_trip_and_validation():
         Biller.from_dict({"id": "x", "name": "X", "kind": "gift"})
     with pytest.raises(ValueError):
         Biller.from_dict({"id": "x", "name": ""})
+
+
+# ------------------------------------------------------------ login page + note
+def test_bill_duty_points_to_its_login_page_and_password_note():
+    e = make()
+    e.add_biller(
+        Biller(id="duke", name="Duke Energy", login_url="https://example.com/login",
+               login_note="Bitwarden > Home Bills > Duke Energy"),
+        date(2026, 11, 1),
+    )
+    duty = e.duties["bill-duke"]
+    assert e.login_for(duty).id == "duke"
+    assert e.login_lines(duty) == [
+        "Log in: https://example.com/login",
+        "Bitwarden > Home Bills > Duke Energy",
+    ]
+
+
+def test_income_biller_login_shows_on_the_duty_it_completes():
+    e = make()
+    e.add_duty(
+        Duty(id="rent-check", module="rental", title={"en": "Confirm rent"},
+             schedule={"type": "day_of_month", "days": [1, 15]}),
+        date(2026, 11, 1),
+    )
+    e.add_biller(
+        Biller(id="rent", name="Zelle Rent", kind="income", module="rental",
+               completes=["rent-check"], login_url="https://bank.example/login"),
+        date(2026, 11, 1),
+    )
+    assert e.login_lines(e.duties["rent-check"]) == ["Log in: https://bank.example/login"]
+
+
+def test_no_login_lines_without_a_link_or_note():
+    e = make()
+    assert e.login_for(e.duties["bill-duke"]) is None
+    assert e.login_lines(e.duties["bill-duke"]) == []
+
+
+def test_only_web_links_are_accepted():
+    import pytest
+
+    for bad in ("javascript:alert(1)", "duke-energy.com", "https://", "ftp://x"):
+        with pytest.raises(ValueError):
+            Biller.from_dict({"id": "x", "name": "X", "login_url": bad})
+    assert Biller.from_dict({"id": "x", "name": "X", "login_url": "HTTPS://x.com"}).login_url
+
+
+def test_overview_carries_login_for_the_card():
+    from engine.overview import build_overview
+
+    e = make()
+    e.add_biller(
+        Biller(id="duke", name="Duke Energy", login_url="https://example.com/login", login_note="In Bitwarden"),
+        date(2026, 11, 1),
+    )
+    e.apply_bill_state("duke", state(), at("2026-11-21"))
+    item = next(i for i in build_overview(e, date(2026, 11, 21))["items"] if i["duty_id"] == "bill-duke")
+    assert item["login_url"] == "https://example.com/login" and item["login_note"] == "In Bitwarden"
+
+
+def test_old_saved_billers_load_without_login_fields():
+    b = Biller.from_dict({"id": "duke", "name": "Duke Energy", "kind": "bill"})
+    assert b.login_url == "" and b.login_note == ""

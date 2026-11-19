@@ -55,6 +55,7 @@ class HomekeeperTodo(HomekeeperEntity, TodoListEntity):
                             f"Owner: {owners}" if owners else "",
                             "Snoozed" if state == "snoozed" else "",
                             duty.how_to,
+                            *eng.login_lines(duty),
                         )
                         if p
                     ),

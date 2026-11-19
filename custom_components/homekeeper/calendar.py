@@ -35,7 +35,10 @@ class HomekeeperCalendar(HomekeeperEntity, CalendarEntity):
                         start=due,
                         end=due + timedelta(days=1),
                         summary=duty.display_title("en"),
-                        description=duty.how_to or None,
+                        description="\n".join(
+                            p for p in (duty.how_to, *eng.login_lines(duty)) if p
+                        )
+                        or None,
                         uid=f"{duty.id}:{due.isoformat()}",
                     )
                 )
