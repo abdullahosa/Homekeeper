@@ -98,6 +98,8 @@ def build_overview(engine: Engine, today: date, horizon_days: int = 14) -> dict[
                 "days": (occ.due - today).days,
                 "snoozed_until": occ.snoozed_until.isoformat() if occ.snoozed_until else None,
                 "amount": occ.meta.get("amount"),
+                "what": occ.meta.get("what", ""),
+                "event": occ.meta.get("event"),
                 "how_to": duty.how_to,
                 "done_by": duty.done_by,
                 "biller": duty.biller,

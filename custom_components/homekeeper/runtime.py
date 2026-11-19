@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -54,6 +54,24 @@ def in_quiet_hours(person: Person, now: datetime) -> bool:
     return here >= start or here < end
 
 
+CALENDAR_LOOKAHEAD_DAYS = 22  # three weeks of pickups is plenty to find the next one
+CALENDAR_MORNING = time(6, 0)  # "bins still not out" waits until the morning of pickup
+
+
+def _event_day(start: Any) -> Any:
+    """A calendar event's start as a local date ('2026-11-24' or a datetime)."""
+    if not start:
+        return None
+    text = str(start)
+    if len(text) == 10:
+        try:
+            return datetime.strptime(text, "%Y-%m-%d").date()
+        except ValueError:
+            return None
+    parsed = dt_util.parse_datetime(text)
+    return dt_util.as_local(parsed).date() if parsed else None
+
+
 class Runtime:
     """Owns the engine for one config entry."""
 
@@ -66,6 +84,7 @@ class Runtime:
         )
         self.queue: list[tuple[str, Notification]] = []
         self.invalid: list[str] = []
+        self.calendar_problems: set[str] = set()
         self.last_tick: datetime | None = None
         self._saved_occurrences: dict[str, dict[str, Any]] = {}
         self.signature: tuple = ()
@@ -189,9 +208,40 @@ class Runtime:
                 out[key] = None  # type: ignore[assignment]
         return out
 
+    async def async_sync_calendars(self, now: datetime) -> TickResult:
+        """Feed each calendar-driven duty the next few weeks of its calendar's events."""
+        merged = TickResult()
+        for duty in list(self.engine.duties.values()):
+            sched = duty.schedule
+            if sched.get("type") != "calendar" or not duty.enabled:
+                continue
+            entity_id = sched.get("calendar", "")
+            start = dt_util.start_of_local_day(now)
+            try:
+                response = await self.hass.services.async_call(
+                    "calendar", "get_events",
+                    {"entity_id": entity_id, "start_date_time": start.isoformat(),
+                     "end_date_time": (start + timedelta(days=CALENDAR_LOOKAHEAD_DAYS)).isoformat()},
+                    blocking=True, return_response=True,
+                )
+                raw = (response or {}).get(entity_id, {}).get("events", [])
+            except Exception:  # noqa: BLE001 - a missing calendar must never stop the tick
+                _LOGGER.debug("Calendar %s unavailable", entity_id, exc_info=True)
+                self.calendar_problems.add(f"calendar_unavailable:{duty.id}")
+                continue
+            self.calendar_problems.discard(f"calendar_unavailable:{duty.id}")
+            events = [(day, str(e.get("summary") or "")) for e in raw if (day := _event_day(e.get("start")))]
+            result = self.engine.apply_calendar(duty.id, events, now)
+            merged.events.extend(result.events)
+            merged.notifications.extend(result.notifications)
+        return merged
+
     async def async_tick(self, now: datetime | None = None) -> TickResult:
         now = now or dt_util.now()
+        cal = await self.async_sync_calendars(now)
         result = self.engine.tick(now, self.read_conditions())
+        result.events[:0] = cal.events
+        result.notifications[:0] = cal.notifications
         self.last_tick = now
         await self._dispatch(result, now)
         return result
@@ -227,11 +277,37 @@ class Runtime:
             person = self.engine.people.get(person_id)
             if person is None:
                 continue
+            if self._stale(note):
+                continue  # done (or moved) while it was waiting
+            if self._too_early(note, now):
+                held.append((person_id, note))
+                continue
             if in_quiet_hours(person, now) and note.kind != "escalation":
                 held.append((person_id, note))
                 continue
             await self._send(person, note)
         self.queue = held
+
+    def _stale(self, note: Notification) -> bool:
+        if note.kind not in ("opened", "reminder", "overdue", "moved"):
+            return False
+        occ = self.engine.occurrences.get(note.duty_id)
+        return occ is None or occ.id != note.occurrence_id
+
+    def _too_early(self, note: Notification, now: datetime) -> bool:
+        """Calendar duties (bin night) speak at their own time: the heads-up at
+        `notify_at` (e.g. 18:00), and "still not done" the next morning, not at midnight."""
+        duty = self.engine.duties.get(note.duty_id)
+        if duty is None or duty.schedule.get("type") != "calendar":
+            return False
+        if note.kind in ("opened", "reminder", "moved") and duty.schedule.get("notify_at"):
+            occ = self.engine.occurrences.get(note.duty_id)
+            if occ is not None and now.date() < occ.due:
+                return False  # a heads-up for a later day can go now
+            return now.time() < time.fromisoformat(duty.schedule["notify_at"])
+        if note.kind == "overdue":
+            return now.time() < CALENDAR_MORNING
+        return False
 
     async def _send(self, person: Person, note: Notification) -> None:
         if not person.notify:
@@ -245,12 +321,15 @@ class Runtime:
         title_text = duty.display_title(lang)
         if occ and occ.meta.get("amount") is not None:
             title_text += f" (${float(occ.meta['amount']):,.2f})"
+        if occ and occ.meta.get("what"):
+            title_text += f": {messages.collected(occ.meta['what'], lang)}"
         body = messages.text(
             note.kind,
             lang,
             title=title_text,
             due=occ.due.isoformat() if occ else "",
             by=by,
+            detail=note.detail,
         )
         actions = [
             {
@@ -332,7 +411,10 @@ class Runtime:
         )
 
     def health_problems(self) -> list[str]:
-        problems = list(self.engine.health(dt_util.now().date())) + list(self.invalid)
+        problems = (
+            list(self.engine.health(dt_util.now().date())) + list(self.invalid)
+            + sorted(self.calendar_problems)
+        )
         if self.last_tick is None:
             problems.append("never_ticked")
         if self.engine.billers:

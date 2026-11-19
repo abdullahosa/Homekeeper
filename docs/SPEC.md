@@ -50,6 +50,7 @@ This repository is public. It holds only generic code and generic starter packs.
 - `yearly_window`: opens on a date, due by a date (HOA, fertilizer windows).
 - `condition`: opens when a sensor condition becomes true (soil temperature, rain, first freeze), with an optional earliest and latest date.
 - `signal`: opens when an external event arrives (bill posted, rent received); can auto-complete a paired duty.
+- `calendar`: follows a Home Assistant calendar (e.g. trash pickup). One occurrence for the next event whose title contains any `match` word (all events when empty), due `lead` before it (`1d` = the evening before). The event title (what is collected) rides along on the to-do, card and push. If the event moves or is cancelled, the occurrence moves with it, with a "schedule changed" push when bin night was within a day; an event that passes undone is skipped. Pushes wait until `notify_at` on the due day, and an overdue push waits until 06:00. An empty calendar answer changes nothing (not loaded yet); an unavailable calendar is a health problem.
 
 Any schedule can carry `open_early_when` (a condition that opens the window ahead of the calendar date) and `not_before` / `not_after` bounds.
 

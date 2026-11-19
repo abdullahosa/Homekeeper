@@ -20,7 +20,36 @@ MESSAGES: dict[str, dict[str, str]] = {
         "en": "{by} can't do this one: {title}",
         "ar": "{by} لا يستطيع القيام بهذه المهمة: {title}",
     },
+    "moved": {  # detail: the new event day, e.g. the new pickup date
+        "en": "Moved to {detail}: {title}",
+        "ar": "تغيّر الموعد إلى {detail}: {title}",
+    },
 }
+
+# What a trash calendar says is collected, in Arabic. Unknown words stay as written.
+COLLECTED_AR = {
+    "garbage": "النفايات",
+    "trash": "النفايات",
+    "refuse": "النفايات",
+    "recycling": "إعادة التدوير",
+    "recycle": "إعادة التدوير",
+    "yard waste": "مخلفات الحديقة",
+    "yard": "مخلفات الحديقة",
+    "bulky": "الأغراض الكبيرة",
+    "bulky items": "الأغراض الكبيرة",
+    "compost": "السماد",
+    "glass": "الزجاج",
+}
+
+
+def collected(text: str, language: str) -> str:
+    """'Garbage, Recycling' -> 'Garbage + Recycling' (or Arabic)."""
+    import re
+
+    parts = [p.strip() for p in re.split(r",|\+|&|\band\b|/", text or "") if p.strip()]
+    if language == "ar":
+        parts = [COLLECTED_AR.get(p.lower(), p) for p in parts]
+    return " + ".join(dict.fromkeys(parts))
 
 BUTTONS: dict[str, dict[str, str]] = {
     "done": {"en": "Done", "ar": "تم"},

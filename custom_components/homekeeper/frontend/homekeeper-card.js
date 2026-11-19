@@ -288,6 +288,16 @@ class HomekeeperCard extends HTMLElement {
     return box;
   }
 
+  // "Garbage, Recycling" from the trash calendar -> "Garbage + Recycling" (or Arabic)
+  _collected(text) {
+    const ar = { garbage: "النفايات", trash: "النفايات", refuse: "النفايات", recycling: "إعادة التدوير",
+      recycle: "إعادة التدوير", "yard waste": "مخلفات الحديقة", yard: "مخلفات الحديقة",
+      bulky: "الأغراض الكبيرة", "bulky items": "الأغراض الكبيرة", compost: "السماد", glass: "الزجاج" };
+    const parts = String(text).split(/,|\+|&|\band\b|\//).map((p) => p.trim()).filter(Boolean)
+      .map((p) => (this._lang === "ar" && ar[p.toLowerCase()]) || p);
+    return [...new Set(parts)].join(" + ");
+  }
+
   _meta(item) {
     const t = this._t;
     const meta = document.createElement("div");
@@ -299,6 +309,7 @@ class HomekeeperCard extends HTMLElement {
     const owners = item.owners
       .map((id) => (this._data.people.find((p) => p.id === id) || {}).name).filter(Boolean).join(", ");
     const parts = [];
+    if (item.what) { parts.push(this._collected(item.what)); }
     if (item.amount != null) { parts.push(`$${Number(item.amount).toFixed(2)}`); }
     if (owners) { parts.push(owners); }
     if (parts.length) { meta.append(document.createTextNode(` · ${parts.join(" · ")}`)); }

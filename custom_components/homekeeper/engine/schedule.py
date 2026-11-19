@@ -14,7 +14,9 @@ SCHEDULE_TYPES = (
     "yearly_window",
     "condition",
     "signal",
+    "calendar",
 )
+_HHMM = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 
 _DUR = re.compile(r"^([+-]?)(\d+)([dwmy])$")
 
@@ -76,6 +78,16 @@ def validate(sched: dict[str, Any]) -> None:
         for key in ("not_before", "not_after"):
             if key in sched:
                 _md(sched[key], 2001)
+    if kind == "calendar":
+        if not str(sched.get("calendar", "")).startswith("calendar."):
+            raise ValueError("calendar needs a calendar entity, e.g. calendar.cartology")
+        value, unit = parse_duration(sched.get("lead", "1d"))
+        if unit not in ("d", "w") or value < 0:
+            raise ValueError("lead must be days or weeks before the event, e.g. 1d")
+        if sched.get("notify_at") and not _HHMM.match(str(sched["notify_at"])):
+            raise ValueError("notify_at must be HH:MM")
+        if not isinstance(sched.get("match", []), list):
+            raise ValueError("match must be a list of words")
     for key in ("open_early_when", "when"):
         if key in sched and not isinstance(sched[key], dict):
             raise ValueError(f"{key} must be a mapping")
@@ -117,9 +129,10 @@ def _day_of_month_candidates(sched: dict[str, Any], start: date, count: int = 3)
 
 
 def first_window(sched: dict[str, Any], today: date) -> tuple[date | None, date] | None:
-    """Window for a newly created duty, or None for signal-driven duties."""
+    """Window for a newly created duty, or None for signal- and calendar-driven duties
+    (those open when the signal or calendar event arrives)."""
     kind = sched["type"]
-    if kind == "signal":
+    if kind in ("signal", "calendar"):
         return None
     if kind == "interval":
         every = sched["every"]
@@ -154,7 +167,7 @@ def next_window(
 ) -> tuple[date | None, date] | None:
     """Window that follows an occurrence that was completed or skipped."""
     kind = sched["type"]
-    if kind == "signal":
+    if kind in ("signal", "calendar"):
         return None
     if kind == "interval":
         due = add_duration(prev_due, sched["every"])
