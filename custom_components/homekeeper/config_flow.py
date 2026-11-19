@@ -548,6 +548,8 @@ class BillerFlow(_BaseSubentryFlow):
                     enabled=user_input.get("enabled", True),
                     login_url=login_url,
                     login_note=(user_input.get("login_note") or "").strip(),
+                    name_ar=(user_input.get("name_ar") or "").strip(),
+                    icon=(user_input.get("icon") or "").strip(),
                 ).to_dict()
                 return self._finish(data["name"], data, ident)
         esc = old.get("escalate") or []
@@ -563,6 +565,8 @@ class BillerFlow(_BaseSubentryFlow):
         fields.update(
             {
                 vol.Required("name", default=cur("name", old.get("name", ""))): _text(),
+                vol.Optional("name_ar", default=cur("name_ar", old.get("name_ar", ""))): _text(),
+                vol.Optional("icon", default=cur("icon", old.get("icon", ""))): selector.IconSelector(),
                 vol.Required("kind", default=cur("kind", old.get("kind", "bill"))): _select(
                     ["bill", "income"]
                 ),

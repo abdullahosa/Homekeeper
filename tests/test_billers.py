@@ -201,3 +201,70 @@ def test_overview_carries_login_for_the_card():
 def test_old_saved_billers_load_without_login_fields():
     b = Biller.from_dict({"id": "duke", "name": "Duke Energy", "kind": "bill"})
     assert b.login_url == "" and b.login_note == ""
+
+
+# ------------------------------------------------------------ bills table rows
+def _bills(e, today="2026-11-21"):
+    from engine.overview import build_bills
+
+    return {r["id"]: r for r in build_bills(e, date.fromisoformat(today))}
+
+
+def test_bills_table_shows_open_bill_with_amount_and_mark_paid():
+    e = make()
+    e.apply_bill_state("duke", state(), at("2026-11-21"))
+    row = _bills(e)["duke"]
+    assert row["status"] == "due" and row["amount"] == 120.5
+    assert row["date"] == "2026-12-10" and row["days"] == 19
+    assert row["duty_id"] == "bill-duke" and row["owners"] == ["a"]
+
+
+def test_bills_table_keeps_paid_bills_visible():
+    e = make()
+    e.apply_bill_state("duke", state(), at("2026-11-21"))
+    e.apply_bill_state("duke", state(status="paid", paid="2026-11-25"), at("2026-11-25"))
+    row = _bills(e, "2026-11-25")["duke"]
+    assert row["status"] == "paid" and row["amount"] == 120.5 and row["duty_id"] is None
+
+
+def test_bills_table_late_bill_is_overdue_and_unknown_is_none():
+    e = make()
+    e.add_biller(Biller(id="gas", name="Gas Co"), date(2026, 11, 1))
+    e.apply_bill_state("duke", state(due="2026-11-20"), at("2026-11-15"))
+    rows = _bills(e, "2026-11-22")
+    assert rows["duke"]["status"] == "overdue" and rows["duke"]["days"] == -2
+    assert rows["gas"]["status"] == "none" and rows["gas"]["amount"] is None
+
+
+def test_bills_table_sorts_urgent_first_and_income_last():
+    from engine.overview import build_bills
+
+    e = make()
+    e.add_biller(Biller(id="gas", name="Gas Co"), date(2026, 11, 1))
+    e.add_biller(Biller(id="rent", name="Zelle Rent", kind="income", module="rental"), date(2026, 11, 1))
+    e.apply_bill_state("gas", state(status="paid", due="2026-11-10", paid="2026-11-09"), at("2026-11-21"))
+    e.apply_bill_state("duke", state(), at("2026-11-21"))
+    e.apply_bill_state("rent", {"status": "paid", "paid": "2026-11-12", "paid_amount": 1150.0}, at("2026-11-21"))
+    rows = build_bills(e, date(2026, 11, 21))
+    assert [r["id"] for r in rows] == ["duke", "gas", "rent"]
+    rent = rows[-1]
+    assert rent["status"] == "received" and rent["amount"] == 1150.0 and rent["date"] == "2026-11-12"
+
+
+def test_bills_table_carries_display_fields_and_arabic_pay_title():
+    e = make()
+    e.add_biller(
+        Biller(id="duke", name="Duke Energy", name_ar="الكهرباء", icon="mdi:flash",
+               login_url="https://example.com/login"),
+        date(2026, 11, 1),
+    )
+    row = _bills(e)["duke"]
+    assert (row["name_ar"], row["icon"], row["login_url"]) == ("الكهرباء", "mdi:flash", "https://example.com/login")
+    assert e.duties["bill-duke"].title["ar"] == "سداد فاتورة الكهرباء"
+
+
+def test_bill_states_survive_save_and_load():
+    e = make()
+    e.apply_bill_state("duke", state(status="paid", paid="2026-11-25"), at("2026-11-25"))
+    again = Engine.from_dict(e.to_dict())
+    assert again.bill_states["duke"]["status"] == "paid"

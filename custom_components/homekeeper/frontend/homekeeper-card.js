@@ -1,7 +1,8 @@
 /* Homekeeper card. No build step, no dependencies.
  *
  *   type: custom:homekeeper-card
- *   mode: list | wall          (wall = big tiles for a tablet on the wall)
+ *   mode: list | wall | bills  (wall = big tiles for a tablet; bills = every biller's
+ *                               latest bill: amount, due date, status, Pay link, Mark paid)
  *   language: en | ar          (default: Home Assistant's language)
  *   person: <person id>        (show only this person's duties; default: everyone)
  *   module: <module id>        (show only one module)
@@ -17,6 +18,11 @@ const STR = {
     caught_up: "All caught up", upcoming: "Coming up", everyone: "Everyone", all: "All",
     owner: "Owner", problems: "Needs attention", loading: "Loading…", not_ready: "Homekeeper is not set up",
     failed: "That did not work", until: "until", login: "Log in",
+    bills: "Bills", pay: "Pay", mark_paid: "Mark paid", total_due: (a) => `${a} due`,
+    no_billers: "No billers yet. Add them in Homekeeper's settings.",
+    st: { overdue: "Overdue", due: "Due", autopay: "Autopay", paid: "Paid", received: "Received",
+      none: "No bill yet", none_income: "No payment yet" },
+    received_on: (d) => `Received ${d}`, due_on: (d) => `Due ${d}`,
   },
   ar: {
     overdue: "متأخرة", due_today: "مستحقة اليوم", in_days: (n) => `بعد ${n} يوم`,
@@ -25,6 +31,11 @@ const STR = {
     caught_up: "كل شيء منجز", upcoming: "قريباً", everyone: "الجميع", all: "الكل",
     owner: "المسؤول", problems: "يحتاج انتباه", loading: "جارٍ التحميل…", not_ready: "Homekeeper غير مُعد",
     failed: "لم تنجح العملية", until: "حتى", login: "تسجيل الدخول",
+    bills: "الفواتير", pay: "ادفع", mark_paid: "تم الدفع", total_due: (a) => `${a} مستحق`,
+    no_billers: "لا توجد جهات فواتير بعد. أضفها من إعدادات Homekeeper.",
+    st: { overdue: "متأخرة", due: "مستحقة", autopay: "دفع تلقائي", paid: "مدفوعة", received: "تم الاستلام",
+      none: "لا توجد فاتورة", none_income: "لا توجد دفعة" },
+    received_on: (d) => `استُلمت ${d}`, due_on: (d) => `تستحق ${d}`,
   },
 };
 
@@ -93,6 +104,23 @@ h3 { margin: 16px 0 8px; font-size: .9rem; text-transform: uppercase; letter-spa
 .wall .login { font-size: 1rem; }
 .wall .login a { min-height: 44px; }
 .wall .empty { font-size: 2.2rem; padding: 64px 8px; }
+.total { font-size: .9rem; color: var(--secondary-text-color, #666); margin: -6px 0 12px; }
+.bill { display: grid; grid-template-columns: auto 1fr auto; gap: 8px 12px; align-items: center;
+  padding: 10px 12px; border-radius: 10px; background: var(--secondary-background-color, #f5f5f5);
+  border-inline-start: 5px solid var(--divider-color, #999); }
+.bill.overdue { border-inline-start-color: var(--error-color, #c62828); }
+.bill.due { border-inline-start-color: var(--warning-color, #ef6c00); }
+.bill.autopay { border-inline-start-color: var(--info-color, #0288d1); }
+.bill.paid, .bill.received { border-inline-start-color: var(--success-color, #2e7d32); }
+.bill.none { opacity: .75; }
+.bill ha-icon { color: var(--secondary-text-color, #666); --mdc-icon-size: 26px; width: 26px; }
+.bill .sub { font-size: .85rem; color: var(--secondary-text-color, #666); }
+.pill { display: inline-block; font-size: .75rem; font-weight: 600; padding: 1px 8px; border-radius: 999px;
+  margin-inline-end: 6px; background: var(--divider-color, #0002); color: var(--primary-text-color, #222); }
+.pill.overdue { background: var(--error-color, #c62828); color: #fff; }
+.pill.due { background: var(--warning-color, #ef6c00); color: #fff; }
+.pill.autopay { background: var(--info-color, #0288d1); color: #fff; }
+.pill.paid, .pill.received { background: var(--success-color, #2e7d32); color: #fff; }
 .wall h3 { font-size: 1.1rem; }
 `;
 
@@ -118,6 +146,7 @@ class HomekeeperCard extends HTMLElement {
   }
 
   getCardSize() { return this._config && this._config.mode === "wall" ? 8 : 5; }
+  get _bills() { return this._config && this._config.mode === "bills"; }
   getGridOptions() { return { columns: 12, min_columns: 6, rows: "auto" }; }
   static getStubConfig() { return { mode: "list" }; }
 
@@ -239,7 +268,7 @@ class HomekeeperCard extends HTMLElement {
   }
 
   // Where to check the bill and where the password is kept. Never the password itself.
-  _login(item) {
+  _login(item, label) {
     const url = String(item.login_url || "").trim();
     const web = /^https?:\/\/./i.test(url);  // never a javascript: or other link
     if (!web && !item.login_note) { return null; }
@@ -247,7 +276,7 @@ class HomekeeperCard extends HTMLElement {
     box.className = "login";
     if (web) {
       const a = document.createElement("a");
-      a.textContent = `${this._t.login} ↗`;
+      a.textContent = `${label || this._t.login} ↗`;
       a.href = url; a.target = "_blank"; a.rel = "noopener noreferrer";
       box.append(a);
     }
@@ -297,6 +326,8 @@ class HomekeeperCard extends HTMLElement {
       card.append(p);
       return;
     }
+
+    if (this._bills) { this._renderBills(card); return; }
 
     const items = this._visible();
     const needs = items.filter((i) => i.state === "overdue" || i.state === "due");
@@ -375,6 +406,118 @@ class HomekeeperCard extends HTMLElement {
   }
 }
 
+HomekeeperCard.prototype._money = function (amount) {
+  return typeof amount === "number"
+    ? new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount) : "";
+};
+
+HomekeeperCard.prototype._date = function (iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ""));
+  if (!m) { return ""; }
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));  // a calendar day, no time zone
+  const locale = this._lang === "ar" ? "ar-u-nu-latn" : "en-US";
+  return new Intl.DateTimeFormat(locale, { month: "short", day: "numeric" }).format(d);
+};
+
+// One row per biller: BillBot's latest bill (or rent payment), with a Pay / Log in link
+// and Mark paid while Homekeeper has the bill open.
+HomekeeperCard.prototype._renderBills = function (card) {
+  const t = this._t;
+  const rows = (this._data.bills || []).filter((b) => !this._module || b.module === this._module);
+  const open = rows.filter((b) => b.kind === "bill" && ["due", "overdue", "autopay"].includes(b.status));
+  const late = rows.filter((b) => b.status === "overdue").length;
+
+  const header = document.createElement("header");
+  const h = document.createElement("h2");
+  h.textContent = this._config.title || t.bills;
+  const badge = document.createElement("span");
+  badge.className = "badge" + (late ? " bad" : "");
+  badge.textContent = late ? `${late} ${t.st.overdue}` : (open.length ? `${open.length}` : "✓");
+  header.append(h, badge);
+  card.append(header);
+  const sum = open.filter((b) => b.status !== "autopay" && typeof b.amount === "number")
+    .reduce((n, b) => n + b.amount, 0);
+  if (sum > 0) {
+    const total = document.createElement("div");
+    total.className = "total"; total.textContent = t.total_due(this._money(sum));
+    card.append(total);
+  }
+  if (!rows.length) {
+    const e = document.createElement("div");
+    e.className = "empty"; e.textContent = t.no_billers;
+    card.append(e);
+    return;
+  }
+
+  const other = this._lang === "ar" ? "en" : "ar";
+  const people = Object.fromEntries((this._data.people || []).map((p) => [p.id, p.name]));
+  const box = document.createElement("div");
+  box.className = "list";
+  rows.forEach((b) => {
+    const row = document.createElement("div");
+    row.className = `bill ${b.status}`;
+    const icon = document.createElement("ha-icon");
+    icon.setAttribute("icon", b.icon || (b.kind === "income" ? "mdi:cash-plus" : "mdi:receipt-text"));
+    const text = document.createElement("div");
+    const title = document.createElement("div");
+    title.className = "title";
+    const names = { en: b.name, ar: b.name_ar };
+    title.textContent = names[this._lang] || b.name;
+    text.append(title);
+    if (names[other] && names[other] !== title.textContent) {
+      const sub = document.createElement("div");
+      sub.className = "sub"; sub.textContent = names[other];
+      text.append(sub);
+    }
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    const pill = document.createElement("span");
+    pill.className = `pill ${b.status}`;
+    pill.textContent = b.kind === "income" && b.status === "none" ? t.st.none_income : t.st[b.status];
+    meta.append(pill);
+    const bits = [];
+    if (b.amount !== null && b.amount !== undefined) { bits.push(this._money(b.amount)); }
+    if (b.date) {
+      if (b.kind === "income") { bits.push(t.received_on(this._date(b.date))); }
+      else if (["due", "overdue", "autopay"].includes(b.status) && typeof b.days === "number") {
+        const when = this._when({ state: b.status, days: b.days });
+        const span = document.createElement("span");
+        span.textContent = `${this._date(b.date)} · ${when}`;
+        if (b.days < 0) { span.className = "late"; }
+        bits.push(span);
+      } else { bits.push(t.due_on(this._date(b.date))); }
+    }
+    const owners = (b.owners || []).map((o) => people[o] || o).join(", ");
+    if (owners && ["due", "overdue"].includes(b.status)) { bits.push(owners); }
+    bits.forEach((bit) => {
+      meta.append(document.createTextNode(meta.childNodes.length > 1 ? " · " : ""));
+      meta.append(bit);
+    });
+    text.append(meta);
+    const payable = b.kind === "bill" && ["due", "overdue", "autopay"].includes(b.status);
+    const login = this._login(b, payable ? t.pay : t.login);
+    if (login) { text.append(login); }
+    const actions = document.createElement("div");
+    actions.className = "actions";
+    if (b.duty_id) {
+      const item = { duty_id: b.duty_id };
+      const done = document.createElement("button");
+      done.className = "act" + (this._confirming === b.duty_id ? " confirming" : "");
+      done.textContent = this._confirming === b.duty_id ? t.confirm : t.mark_paid;
+      done.addEventListener("click", () => this._onDone(item));
+      actions.append(done);
+    }
+    row.append(icon, text, actions);
+    box.append(row);
+  });
+  card.append(box);
+  if (this._error) {
+    const e = document.createElement("div");
+    e.className = "err"; e.setAttribute("role", "alert"); e.textContent = t[this._error] || t.failed;
+    card.append(e);
+  }
+};
+
 if (!customElements.get("homekeeper-card")) {
   customElements.define("homekeeper-card", HomekeeperCard);
 }
@@ -383,6 +526,6 @@ if (!window.customCards.some((c) => c.type === "homekeeper-card")) {
   window.customCards.push({
     type: "homekeeper-card",
     name: "Homekeeper",
-    description: "What needs doing at home, with one-tap Done. Includes a big-button wall-panel mode.",
+    description: "What needs doing at home, with one-tap Done. Includes a big-button wall-panel mode and a bills table.",
   });
 }

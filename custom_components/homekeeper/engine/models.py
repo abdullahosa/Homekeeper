@@ -184,6 +184,9 @@ class Biller:
     # Where to check the account, and where the password is kept. Never the password.
     login_url: str = ""
     login_note: str = ""
+    # How the bills table shows it: an Arabic name (e.g. الكهرباء) and an mdi icon.
+    name_ar: str = ""
+    icon: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {f.name: getattr(self, f.name) for f in fields(self)}
