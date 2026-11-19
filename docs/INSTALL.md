@@ -39,7 +39,7 @@ CARTology, the Cabarrus / Concord / Kannapolis trash app, runs on ReCollect, whi
 
 1. Get the calendar link: look up your address on the CARTology page (for example kannapolisnc.gov/CARTology), choose **Get a calendar > Add to Google Calendar**, and copy the link it shows. Delete everything from `?client_id=` onward.
 2. Settings > Devices & services > **Add integration > Remote Calendar**, paste the link. You get a calendar entity with every pickup.
-3. Homekeeper > **Add duty**, schedule type **calendar**: pick that calendar, leave **lead** at `1d` (the evening before) and set the time for the heads-up (default 18:00). To split it, make two duties with **Only events containing** `Garbage` and `Recycling`.
+3. Homekeeper > **Add duty**, schedule type **calendar**: pick that calendar, set **Only events containing** to `garbage`, leave **lead** at `1d` (the evening before) and set the time for the heads-up (default 18:00). The `garbage` filter matters: the Concord calendar also lists household hazardous waste drop-off days and leaf-vacuum days, which are not curbside pickups. Homekeeper reads the carts out of each event ("Garbage + Recycling + Yard waste + Bulky waste") and leaves the rest out.
 4. Optional: put an NFC tag on the bin and add it to the duty, so a tap marks it done.
 
 Same-day delays the city sends as app alerts may not be in the calendar; keep the CARTology app for those.

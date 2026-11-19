@@ -225,7 +225,7 @@ def test_calendar_duty_row_says_what_is_collected(browser):
         page = _page(browser, {"mode": "list", "language": lang})
         page.evaluate("""() => {
           const bins = window.DATA.items.find(i => i.duty_id === 'trash');
-          bins.what = 'Garbage, Recycling'; bins.event = '2026-11-24'; bins.state = 'due'; bins.days = 0;
+          bins.what = 'Garbage + Recycling'; bins.event = '2026-11-24'; bins.state = 'due'; bins.days = 0;
           window.fire();
         }""")
         page.wait_for_function(

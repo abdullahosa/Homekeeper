@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from typing import Any
 
+from . import collected
 from . import schedule as sch
 from .models import Biller, Duty, HistoryEntry, Module, Occurrence, Person
 
@@ -372,7 +373,7 @@ class Engine:
             if event_day < today:  # the pickup came and went
                 self._advance(duty, occ, today, "skipped", None, "auto", "event_passed", result)
             elif target == event_day:
-                occ.meta["what"] = " + ".join(by_day[event_day])
+                occ.meta["what"] = " + ".join(collected.tidy(by_day[event_day]))
                 return result
             else:  # moved, cancelled, or an earlier one appeared
                 imminent = today >= occ.due - timedelta(days=1)
@@ -405,7 +406,7 @@ class Engine:
         due = sch.add_duration(event_day, lead, -1)
         occ = Occurrence(
             duty_id=duty.id, due=due, opens=due,
-            meta={"event": event_day.isoformat(), "what": " + ".join(whats)},
+            meta={"event": event_day.isoformat(), "what": " + ".join(collected.tidy(whats))},
         )
         self.occurrences[duty.id] = occ
         return occ

@@ -288,14 +288,12 @@ class HomekeeperCard extends HTMLElement {
     return box;
   }
 
-  // "Garbage, Recycling" from the trash calendar -> "Garbage + Recycling" (or Arabic)
+  // "Garbage + Recycling" (tidied by Homekeeper from the trash calendar), in Arabic if needed
   _collected(text) {
-    const ar = { garbage: "النفايات", trash: "النفايات", refuse: "النفايات", recycling: "إعادة التدوير",
-      recycle: "إعادة التدوير", "yard waste": "مخلفات الحديقة", yard: "مخلفات الحديقة",
-      bulky: "الأغراض الكبيرة", "bulky items": "الأغراض الكبيرة", compost: "السماد", glass: "الزجاج" };
-    const parts = String(text).split(/,|\+|&|\band\b|\//).map((p) => p.trim()).filter(Boolean)
-      .map((p) => (this._lang === "ar" && ar[p.toLowerCase()]) || p);
-    return [...new Set(parts)].join(" + ");
+    const ar = { Garbage: "النفايات", Recycling: "إعادة التدوير", "Yard waste": "مخلفات الحديقة",
+      "Bulky waste": "الأغراض الكبيرة", Compost: "السماد", Glass: "الزجاج" };
+    return String(text).split(" + ").map((p) => p.trim()).filter(Boolean)
+      .map((p) => (this._lang === "ar" && ar[p]) || p).join(" + ");
   }
 
   _meta(item) {
