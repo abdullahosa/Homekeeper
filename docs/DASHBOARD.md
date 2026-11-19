@@ -8,7 +8,7 @@ A ready-made four-view dashboard is in [dashboard.yaml](dashboard.yaml): Today, 
 
 ```yaml
 type: custom:homekeeper-card
-mode: list            # list (default) or wall
+mode: list            # list (default), wall or bills
 title: Homekeeper
 person: me            # a person id, or "me" for the logged-in user; omit to show chips for everyone
 module: lawn          # pin to one module; omit to show module chips
@@ -23,6 +23,16 @@ confirm: true         # tap Done twice; false for a single tap
 - Bills show their amount from BillBot.
 - Arabic switches the card to right-to-left, with Arabic titles where a duty has one.
 - The card updates itself when anything changes (any tap, notification action, NFC scan, voice command or BillBot message) and refreshes every five minutes as a fallback.
+
+## Bills view
+
+`mode: bills` shows one row per biller, filled from your Homekeeper billers and BillBot's latest message for each, so a new biller appears by itself:
+
+- **Status** (Overdue, Due, Autopay, Paid, No bill yet), **amount** and **due date**, most urgent first, with the total still due at the top (autopay bills are not counted). Income billers such as rent come last, showing the last payment received.
+- **Pay ↗** while a bill is open, **Log in ↗** once it is paid (to check it), from the biller's Login page; the password note shows under it.
+- **Mark paid** while Homekeeper has the bill open. It asks for a second tap, closes the pay duty and presses BillBot's Mark paid, like Done.
+- Each biller's **Arabic name** and **icon** (set on the biller) show next to its name; in Arabic the Arabic name comes first.
+- `module:` limits it to one module's billers.
 
 ## "me": who is logged in
 

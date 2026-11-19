@@ -190,3 +190,30 @@ async def test_state_survives_reload(hass, mqtt_mock, bill_entry, freezer):
     occ = rt.engine.occurrences["bill-duke"]
     assert occ.due.isoformat() == "2026-12-10" and occ.meta["amount"] == 120.5
     assert rt.engine.biller_seen["duke"] == "2026-11-20"
+
+
+async def test_bills_table_follows_billbot_over_websocket(
+    hass, mqtt_mock, bill_entry, hass_ws_client, notify_calls, freezer
+):
+    client = await hass_ws_client(hass)  # log in before moving the clock (token expiry)
+    freezer.move_to("2026-11-21 09:00:00")
+    rt = await start(hass, bill_entry())
+    async_fire_mqtt_message(hass, "billbot/duke_energy/state", bill())
+    async_fire_mqtt_message(
+        hass, "billbot/rent_payments/state",
+        json.dumps({"status": "paid", "paid": "2026-11-20", "paid_amount": 1150.0, "due_date": "2026-11-20"}),
+    )
+    await hass.async_block_till_done(wait_background_tasks=True)
+    await client.send_json({"id": 1, "type": "homekeeper/overview"})
+    msg = await client.receive_json()
+    bills = {b["id"]: b for b in msg["result"]["bills"]}
+    assert bills["duke"]["status"] == "due" and bills["duke"]["amount"] == 120.5
+    assert bills["duke"]["duty_id"] == "bill-duke"
+    assert bills["rent"]["status"] == "received" and bills["rent"]["amount"] == 1150.0
+    # paid: the row stays, with nothing left to mark
+    async_fire_mqtt_message(hass, "billbot/duke_energy/state", bill(status="paid", paid="2026-11-22"))
+    await hass.async_block_till_done(wait_background_tasks=True)
+    await client.send_json({"id": 2, "type": "homekeeper/overview"})
+    duke = next(b for b in (await client.receive_json())["result"]["bills"] if b["id"] == "duke")
+    assert duke["status"] == "paid" and duke["duty_id"] is None and duke["amount"] == 120.5
+    assert rt.engine.bill_states["duke"]["status"] == "paid"

@@ -38,6 +38,10 @@ class TickResult:
     notifications: list[Notification] = field(default_factory=list)
 
 
+# What the bills table keeps from each BillBot state message.
+BILL_STATE_KEYS = ("status", "due_date", "amount", "paid", "paid_amount", "autopay")
+
+
 class Engine:
     def __init__(self) -> None:
         self.people: dict[str, Person] = {}
@@ -48,6 +52,9 @@ class Engine:
         self.billers: dict[str, Biller] = {}
         self.biller_seen: dict[str, str] = {}  # biller id -> ISO date of newest bill/payment
         self.biller_since: dict[str, str] = {}  # biller id -> ISO date it was added
+        # biller id -> BillBot's latest state message (status, due date, amount...),
+        # so the bills table can show paid bills too, not only open ones.
+        self.bill_states: dict[str, dict[str, Any]] = {}
 
     # ---------------------------------------------------------------- setup
     def add_person(self, person: Person) -> None:
@@ -360,7 +367,7 @@ class Engine:
             return None
         title = dict(biller.title) or {
             "en": f"Pay {biller.name}",
-            "ar": f"سداد فاتورة {biller.name}",
+            "ar": f"سداد فاتورة {biller.name_ar or biller.name}",
         }
         return Duty(
             id=self.biller_duty_id(biller.id),
@@ -419,6 +426,9 @@ class Engine:
         biller = self.billers.get(biller_id)
         if biller is None or not biller.enabled:
             return result
+        self.bill_states[biller_id] = {
+            k: payload.get(k) for k in BILL_STATE_KEYS if payload.get(k) is not None
+        }
         today = now.date()
         status = payload.get("status")
         if biller.kind == "income":
@@ -540,6 +550,7 @@ class Engine:
             "billers": {k: b.to_dict() for k, b in self.billers.items()},
             "biller_seen": dict(self.biller_seen),
             "biller_since": dict(self.biller_since),
+            "bill_states": {k: dict(v) for k, v in self.bill_states.items()},
         }
 
     @classmethod
@@ -559,4 +570,5 @@ class Engine:
         eng.billers = {k: Biller.from_dict(v) for k, v in data.get("billers", {}).items()}
         eng.biller_seen = dict(data.get("biller_seen", {}))
         eng.biller_since = dict(data.get("biller_since", {}))
+        eng.bill_states = {k: dict(v) for k, v in data.get("bill_states", {}).items()}
         return eng

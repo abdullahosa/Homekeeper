@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Bills view** for the dashboard card (`mode: bills`): one row per biller with status, amount, due date, a Pay / Log in link, the password note and Mark paid, filled from Homekeeper's billers and BillBot's latest message, so new billers show up without editing the card. Rent and other income billers show the last payment received. Homekeeper now keeps each biller's latest BillBot state (also across restarts).
+- Billers have optional **Arabic name** and **icon** fields. The Arabic name is also used in Arabic pay reminders ("سداد فاتورة الكهرباء").
 - Billers have two optional fields: **Login page** and **Where the password is kept**. They show on the bill's to-do item and calendar entry, and on the dashboard card as a "Log in" link with the note under it. An income biller's login shows on the duties it completes (for example the rent check). Only `http://` and `https://` links are accepted. Homekeeper never stores passwords: every Home Assistant user can read these fields, so the note says where the password is (for example a shared password manager), not what it is.
 - The biller form keeps what you typed when it shows an error.
 - A **Homekeeper** page in the sidebar (admins only) shows People, Modules, Duties and Billers in collapsible sections, with what each row still needs: no phone for notifications, no owner, an empty module, an income biller that completes nothing. Sections with something to do start open and finished ones start closed; Expand all and Collapse all are at the top, and your choices are remembered. Adding and editing still happens on the integration page, one tap away.

@@ -350,11 +350,13 @@ async def test_biller_login_fields_are_saved_and_shown_on_the_todo(hass, bill_en
         "escalate_after": "2d", "enabled": True,
         "login_url": "duke-energy.com/login",  # no https://
         "login_note": "Bitwarden > Home Bills > Duke Energy",
+        "name_ar": "الكهرباء", "icon": "mdi:flash",
     }
     r = await hass.config_entries.subentries.async_configure(r["flow_id"], form)
     assert r["type"] is FlowResultType.FORM and r["errors"] == {"login_url": "bad_url"}
     defaults = {str(k): k.default() for k in r["data_schema"].schema if hasattr(k, "default")}
     assert defaults["login_note"] == "Bitwarden > Home Bills > Duke Energy"  # nothing typed is lost
+    assert defaults["name_ar"] == "الكهرباء" and defaults["icon"] == "mdi:flash"
     assert defaults["cadence_days"] == "31" and defaults["sender_domains"] == "duke-energy.com"
     r = await hass.config_entries.subentries.async_configure(
         r["flow_id"], {**form, "login_url": "https://example.com/login"})
@@ -362,6 +364,8 @@ async def test_biller_login_fields_are_saved_and_shown_on_the_todo(hass, bill_en
     await hass.async_block_till_done()
     rt = get_runtime(hass, entry.entry_id)
     assert rt.engine.billers["duke"].login_url == "https://example.com/login"
+    assert (rt.engine.billers["duke"].name_ar, rt.engine.billers["duke"].icon) == ("الكهرباء", "mdi:flash")
+    assert rt.engine.duties["bill-duke"].title["ar"] == "سداد فاتورة الكهرباء"
     rt.engine.apply_bill_state(
         "duke", {"status": "due", "due_date": "2026-12-10", "amount": 50}, dt_util.now())
     rt.notify_entities()

@@ -160,6 +160,8 @@
           "data": {
             "id": "ID (short, no spaces)",
             "name": "Name BillBot files it under (e.g. Duke Energy)",
+            "name_ar": "Arabic name (optional)",
+            "icon": "Icon (optional)",
             "kind": "Kind",
             "module": "Module",
             "sender_domains": "Sender domains (comma separated, e.g. duke-energy.com)",
@@ -176,7 +178,9 @@
           },
           "data_description": {
             "login_url": "The company's sign-in page, starting with https://. Shown on the bill's to-do and as a Log in button on the dashboard card.",
-            "login_note": "Where the family finds the password, e.g. Bitwarden > Home Bills > Duke Energy. Do not type the password here: every Home Assistant user can read this."
+            "login_note": "Where the family finds the password, e.g. Bitwarden > Home Bills > Duke Energy. Do not type the password here: every Home Assistant user can read this.",
+            "name_ar": "Shown next to the name in the bills table and used in Arabic reminders, e.g. الكهرباء.",
+            "icon": "Shown in the bills table, e.g. mdi:flash for electric."
           }
         },
         "first_module": {

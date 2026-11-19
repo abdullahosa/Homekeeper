@@ -29,6 +29,14 @@ views:
         mode: wall
         horizon_days: 7
 
+  - title: Bills
+    path: bills
+    icon: mdi:receipt-text
+    cards:
+      - type: custom:homekeeper-card
+        mode: bills        # every biller: amount, due date, status, Pay link, Mark paid
+        # module: bills    # only one module's billers
+
   - title: Lists
     path: lists
     icon: mdi:format-list-checks

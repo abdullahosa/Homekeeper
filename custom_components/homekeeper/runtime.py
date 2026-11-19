@@ -81,6 +81,7 @@ class Runtime:
         ).history
         self.engine.biller_seen = dict(saved.get("biller_seen", {}))
         self.engine.biller_since = dict(saved.get("biller_since", {}))
+        self.engine.bill_states = {k: dict(v) for k, v in saved.get("bill_states", {}).items()}
         saved_occ = {o["duty_id"]: o for o in saved.get("occurrences", [])}
         self._saved_occurrences = saved_occ
         self.sync_definitions()
@@ -170,6 +171,7 @@ class Runtime:
             "history": full["history"],
             "biller_seen": full["biller_seen"],
             "biller_since": full["biller_since"],
+            "bill_states": full["bill_states"],
         }
 
     async def async_save_now(self) -> None:
