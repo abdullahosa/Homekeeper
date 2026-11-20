@@ -41,6 +41,15 @@ Many city trash apps run on ReCollect, which gives every address a calendar link
 2. Settings > Devices & services > **Add integration > Remote Calendar**, paste the link. You get a calendar entity with every pickup.
 3. Homekeeper > **Add duty**, schedule type **calendar**: pick that calendar, set **Only events containing** to `garbage`, leave **lead** at `1d` (the evening before) and set the time for the heads-up (default 18:00). The filter matters if your calendar also lists drop-off events or leaf collection days, which are not curbside pickups. Homekeeper reads the carts out of each event ("Garbage + Recycling + Yard waste + Bulky waste") and leaves the rest out.
 4. Optional: put an NFC tag on the bin and add it to the duty, so a tap marks it done.
+5. Optional, for a dashboard: Homekeeper adds a tidy copy of the pickups as a calendar named after the duty ("Homekeeper Put the bins out pickups"), with only the days the duty follows, each titled with the carts. Show it with a Calendar card set to the list view:
+
+   ```yaml
+   type: calendar
+   title: Trash pickups
+   initial_view: listWeek   # the next 7 days as a list
+   entities:
+     - calendar.homekeeper_put_the_bins_out_pickups
+   ```
 
 Same-day delays sent as app alerts may not be in the calendar; keep your city's app for those.
 

@@ -195,3 +195,12 @@ def test_tidy_and_translate():
     assert tidy(["Street sweeping - zone 3"]) == ["Street sweeping"]
     assert translate("Garbage + Recycling + Bulky waste", "ar") == "النفايات + إعادة التدوير + الأغراض الكبيرة"
     assert translate("Garbage + Street sweeping", "en") == "Garbage + Street sweeping"
+
+
+def test_pickups_are_the_matched_days_with_tidy_names():
+    e = make(match=["garbage"])
+    assert e.pickups(e.duties["bins"], RECOLLECT) == [
+        (date(2026, 11, 25), "Garbage + Recycling + Yard waste + Bulky waste"),
+        (date(2026, 12, 2), "Garbage + Yard waste"),
+        (date(2026, 12, 9), "Garbage + Recycling + Yard waste + Bulky waste"),
+    ]

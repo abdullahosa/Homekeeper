@@ -351,15 +351,7 @@ class Engine:
             return result
         today = now.date()
         lead = duty.schedule.get("lead", "1d")
-        words = [w.lower() for w in duty.schedule.get("match", []) if str(w).strip()]
-        by_day: dict[date, list[str]] = {}
-        for day, summary in sorted(events):
-            text = (summary or "").strip()
-            if words and not any(w in text.lower() for w in words):
-                continue
-            seen = by_day.setdefault(day, [])
-            if text and text not in seen:
-                seen.append(text)
+        by_day = self.calendar_days(duty, events)
         handled = {h.occurrence_due for h in self.history if h.duty_id == duty_id}
         upcoming = [d for d in sorted(by_day) if d >= today and sch.add_duration(d, lead, -1) not in handled]
         target = upcoming[0] if upcoming else None
@@ -392,6 +384,27 @@ class Engine:
         if target is not None and duty_id not in self.occurrences:
             self._calendar_occurrence(duty, target, by_day[target], lead)
         return result
+
+    @staticmethod
+    def calendar_days(duty: Duty, events: list[tuple[date, str]]) -> dict[date, list[str]]:
+        """The event titles on each day that the duty's `match` words select."""
+        words = [w.lower() for w in duty.schedule.get("match", []) if str(w).strip()]
+        by_day: dict[date, list[str]] = {}
+        for day, summary in sorted(events):
+            text = (summary or "").strip()
+            if words and not any(w in text.lower() for w in words):
+                continue
+            seen = by_day.setdefault(day, [])
+            if text and text not in seen:
+                seen.append(text)
+        return by_day
+
+    def pickups(self, duty: Duty, events: list[tuple[date, str]]) -> list[tuple[date, str]]:
+        """Each selected day with what is collected, tidied: (day, "Garbage + Recycling")."""
+        return [
+            (day, " + ".join(collected.tidy(texts)))
+            for day, texts in sorted(self.calendar_days(duty, events).items())
+        ]
 
     def calendar_lines(self, duty: Duty) -> list[str]:
         occ = self.occurrences.get(duty.id)
