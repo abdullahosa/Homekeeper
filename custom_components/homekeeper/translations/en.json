@@ -210,6 +210,31 @@
       "abort": {
         "reconfigure_successful": "Saved."
       }
+    },
+    "calendar": {
+      "initiate_flow": {
+        "user": "Add calendar",
+        "reconfigure": "Edit calendar"
+      },
+      "entry_type": "Calendar",
+      "step": {
+        "user": {
+          "title": "Tidy calendar",
+          "description": "A cleaned-up copy of another calendar for your dashboard: only the days you want, each titled with what is collected (Garbage + Recycling). Nothing to check off.",
+          "data": {
+            "name": "Name",
+            "calendar": "Calendar to tidy",
+            "match": "Only events containing (comma separated, blank = every event)"
+          },
+          "data_description": {
+            "name": "Also the new calendar's name, e.g. Trash pickups becomes calendar.homekeeper_trash_pickups.",
+            "match": "For a city trash calendar, use garbage: it may also list drop-off and leaf collection days."
+          }
+        }
+      },
+      "abort": {
+        "reconfigure_successful": "Saved."
+      }
     }
   },
   "services": {

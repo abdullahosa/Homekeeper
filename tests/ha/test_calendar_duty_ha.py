@@ -196,5 +196,55 @@ async def test_tidy_pickup_calendar_for_the_calendar_card(hass, entry_factory, c
     )
     events = resp[tidy]["events"]
     assert [(e["start"], e["summary"]) for e in events] == [("2026-11-25", "Garbage + Recycling")]
-    assert events[0]["description"] == "Put the bins out: the evening before"
+    assert events[0]["description"].startswith("Put the bins out: the evening before\nLoose leaf")
     assert hass.states.get(tidy).attributes["message"] == "Garbage + Recycling"  # the next pickup
+
+
+async def test_tidy_calendar_item_without_a_duty(hass, entry_factory, calendar_events, notify_calls, freezer):
+    """Add calendar: a cleaned-up copy to look at. No duty, no check-offs, no pushes."""
+    calendar_events["events"] = [
+        {"start": "2026-11-21", "end": "2026-11-22", "summary": "Hhw collection - northside"},
+        {"start": "2026-11-25", "end": "2026-11-26",
+         "summary": "Loose leaf - zone b - day 3, yard waste - northside, recycling - northside, and garbage - northside"},
+        {"start": "2026-12-02", "end": "2026-12-03", "summary": "Yard waste - northside and garbage - northside"},
+    ]
+    entry = entry_factory()
+    rt = await start(hass, entry, freezer)
+    r = await hass.config_entries.subentries.async_init((entry.entry_id, "calendar"), context={"source": "user"})
+    assert r["step_id"] == "user"
+    r = await hass.config_entries.subentries.async_configure(
+        r["flow_id"], {"name": "Trash pickups", "calendar": "calendar.trash_pickup", "match": "garbage"}
+    )
+    assert r["type"] is FlowResultType.CREATE_ENTRY and r["title"] == "Calendar · Trash pickups"
+    await hass.async_block_till_done()
+    rt = get_runtime(hass, entry.entry_id)
+    await rt.async_tick(local("2026-11-20T10:00"))
+    rt.notify_entities()
+    await hass.async_block_till_done()
+    tidy = "calendar.homekeeper_trash_pickups"
+    resp = await hass.services.async_call(
+        "calendar", "get_events",
+        {"entity_id": tidy, "start_date_time": "2026-11-20T00:00:00", "end_date_time": "2026-12-04T00:00:00"},
+        blocking=True, return_response=True,
+    )
+    events = resp[tidy]["events"]
+    assert [(e["start"], e["summary"]) for e in events] == [
+        ("2026-11-25", "Garbage + Recycling + Yard waste"),
+        ("2026-12-02", "Garbage + Yard waste"),
+    ]
+    assert events[0]["description"].startswith("Loose leaf - zone b - day 3")  # the original, for details
+    assert hass.states.get(tidy).attributes["message"] == "Garbage + Recycling + Yard waste"
+    assert not [d for d in rt.engine.duties.values() if d.schedule.get("type") == "calendar"]
+    assert notify_calls == []
+
+
+async def test_tidy_calendar_with_a_missing_source_is_a_health_problem(
+    hass, entry_factory, calendar_events, notify_calls, freezer
+):
+    entry = entry_factory(extra=(
+        sub("calendar", "gone", {"id": "gone", "name": "Old pickups", "calendar": "calendar.gone", "match": []},
+            "Calendar · Old pickups"),
+    ))
+    rt = await start(hass, entry, freezer)
+    assert "calendar_unavailable:gone" in rt.health_problems()
+    assert hass.states.get("calendar.homekeeper_old_pickups") is not None

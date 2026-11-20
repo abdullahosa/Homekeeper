@@ -24,6 +24,7 @@ from .const import (
     CONF_CONDITIONS,
     DOMAIN,
     SUBENTRY_BILLER,
+    SUBENTRY_CALENDAR,
     SUBENTRY_DUTY,
     SUBENTRY_MODULE,
     SUBENTRY_PERSON,
@@ -120,6 +121,7 @@ class HomekeeperConfigFlow(ConfigFlow, domain=DOMAIN):
             SUBENTRY_MODULE: ModuleFlow,
             SUBENTRY_DUTY: DutyFlow,
             SUBENTRY_BILLER: BillerFlow,
+            SUBENTRY_CALENDAR: CalendarFlow,
         }
 
 
@@ -238,6 +240,32 @@ class PersonFlow(_BaseSubentryFlow):
         return self.async_show_form(
             step_id="user", data_schema=vol.Schema(fields), errors=errors
         )
+
+
+class CalendarFlow(_BaseSubentryFlow):
+    """A tidy copy of another calendar, to look at. No duty, nothing to check off."""
+
+    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
+        entry = self._get_entry()
+        old = self._existing()
+        if user_input is not None:
+            name = user_input["name"].strip()
+            ident = old.get("id") or _new_id(name, _ids(entry, SUBENTRY_CALENDAR), "calendar")
+            data = {
+                "id": ident,
+                "name": name,
+                "calendar": user_input["calendar"],
+                "match": _csv(user_input.get("match")),
+            }
+            return self._finish(name, data, ident)
+        fields = {
+            vol.Required("name", default=old.get("name", "Trash pickups")): _text(),
+            vol.Required("calendar", default=old.get("calendar", vol.UNDEFINED)): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="calendar")
+            ),
+            vol.Optional("match", default=",".join(old.get("match", []))): _text(),
+        }
+        return self.async_show_form(step_id="user", data_schema=vol.Schema(fields))
 
 
 class ModuleFlow(_BaseSubentryFlow):

@@ -24,11 +24,12 @@ from .const import (
     STORAGE_KEY,
     STORAGE_VERSION,
     SUBENTRY_BILLER,
+    SUBENTRY_CALENDAR,
     SUBENTRY_DUTY,
     SUBENTRY_MODULE,
     SUBENTRY_PERSON,
 )
-from .engine import Biller, Duty, Engine, Module, Notification, Person, TickResult
+from .engine import Biller, Duty, Engine, Module, Notification, Person, TickResult, collected
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -85,8 +86,11 @@ class Runtime:
         self.queue: list[tuple[str, Notification]] = []
         self.invalid: list[str] = []
         self.calendar_problems: set[str] = set()
-        # calendar duty id -> [(day, "Garbage + Recycling")], for its tidy calendar entity
-        self.pickups: dict[str, list[tuple[Any, str]]] = {}
+        # key -> [(day, "Garbage + Recycling", original titles)] for the tidy calendars:
+        # a calendar duty's id, or "cal:<id>" for a Calendar item
+        self.pickups: dict[str, list[tuple[Any, str, str]]] = {}
+        # Calendar items: id -> {"name", "calendar", "match"}
+        self.tidy_calendars: dict[str, dict[str, Any]] = {}
         self.last_tick: datetime | None = None
         self._saved_occurrences: dict[str, dict[str, Any]] = {}
         self.signature: tuple = ()
@@ -113,6 +117,11 @@ class Runtime:
         today = dt_util.now().date()
         eng.people = {}
         eng.modules = {}
+        self.tidy_calendars = {
+            str(sub.data["id"]): dict(sub.data)
+            for sub in self.entry.subentries.values()
+            if sub.subentry_type == SUBENTRY_CALENDAR and sub.data.get("id")
+        }
         for sub in self.entry.subentries.values():
             if sub.subentry_type == SUBENTRY_PERSON:
                 person = Person.from_dict(dict(sub.data))
@@ -210,29 +219,40 @@ class Runtime:
                 out[key] = None  # type: ignore[assignment]
         return out
 
+    async def _fetch_events(self, key: str, entity_id: str, now: datetime) -> list[tuple[Any, str]] | None:
+        """(day, title) for the next weeks of a calendar; None (and a health problem) if
+        it cannot be read."""
+        start = dt_util.start_of_local_day(now)
+        try:
+            response = await self.hass.services.async_call(
+                "calendar", "get_events",
+                {"entity_id": entity_id, "start_date_time": start.isoformat(),
+                 "end_date_time": (start + timedelta(days=CALENDAR_LOOKAHEAD_DAYS)).isoformat()},
+                blocking=True, return_response=True,
+            )
+            raw = (response or {}).get(entity_id, {}).get("events", [])
+        except Exception:  # noqa: BLE001 - a missing calendar must never stop the tick
+            _LOGGER.debug("Calendar %s unavailable", entity_id, exc_info=True)
+            self.calendar_problems.add(f"calendar_unavailable:{key}")
+            return None
+        self.calendar_problems.discard(f"calendar_unavailable:{key}")
+        return [(day, str(e.get("summary") or "")) for e in raw if (day := _event_day(e.get("start")))]
+
     async def async_sync_calendars(self, now: datetime) -> TickResult:
-        """Feed each calendar-driven duty the next few weeks of its calendar's events."""
+        """Refresh the tidy calendars, and feed each calendar-driven duty the next few
+        weeks of its calendar's events."""
+        for cal_id, cfg in self.tidy_calendars.items():
+            events = await self._fetch_events(cal_id, cfg.get("calendar", ""), now)
+            if events:  # empty = still loading: keep what we had
+                self.pickups[f"cal:{cal_id}"] = collected.pickups(cfg.get("match", []), events)
         merged = TickResult()
         for duty in list(self.engine.duties.values()):
             sched = duty.schedule
             if sched.get("type") != "calendar" or not duty.enabled:
                 continue
-            entity_id = sched.get("calendar", "")
-            start = dt_util.start_of_local_day(now)
-            try:
-                response = await self.hass.services.async_call(
-                    "calendar", "get_events",
-                    {"entity_id": entity_id, "start_date_time": start.isoformat(),
-                     "end_date_time": (start + timedelta(days=CALENDAR_LOOKAHEAD_DAYS)).isoformat()},
-                    blocking=True, return_response=True,
-                )
-                raw = (response or {}).get(entity_id, {}).get("events", [])
-            except Exception:  # noqa: BLE001 - a missing calendar must never stop the tick
-                _LOGGER.debug("Calendar %s unavailable", entity_id, exc_info=True)
-                self.calendar_problems.add(f"calendar_unavailable:{duty.id}")
+            events = await self._fetch_events(duty.id, sched.get("calendar", ""), now)
+            if events is None:
                 continue
-            self.calendar_problems.discard(f"calendar_unavailable:{duty.id}")
-            events = [(day, str(e.get("summary") or "")) for e in raw if (day := _event_day(e.get("start")))]
             if events:
                 self.pickups[duty.id] = self.engine.pickups(duty, events)
             result = self.engine.apply_calendar(duty.id, events, now)
