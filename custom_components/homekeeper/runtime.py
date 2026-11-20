@@ -54,7 +54,7 @@ def in_quiet_hours(person: Person, now: datetime) -> bool:
     return here >= start or here < end
 
 
-CALENDAR_LOOKAHEAD_DAYS = 22  # three weeks of pickups is plenty to find the next one
+CALENDAR_LOOKAHEAD_DAYS = 42  # enough for the next pickup and a month view of the tidy calendar
 CALENDAR_MORNING = time(6, 0)  # "bins still not out" waits until the morning of pickup
 
 
@@ -85,6 +85,8 @@ class Runtime:
         self.queue: list[tuple[str, Notification]] = []
         self.invalid: list[str] = []
         self.calendar_problems: set[str] = set()
+        # calendar duty id -> [(day, "Garbage + Recycling")], for its tidy calendar entity
+        self.pickups: dict[str, list[tuple[Any, str]]] = {}
         self.last_tick: datetime | None = None
         self._saved_occurrences: dict[str, dict[str, Any]] = {}
         self.signature: tuple = ()
@@ -231,6 +233,8 @@ class Runtime:
                 continue
             self.calendar_problems.discard(f"calendar_unavailable:{duty.id}")
             events = [(day, str(e.get("summary") or "")) for e in raw if (day := _event_day(e.get("start")))]
+            if events:
+                self.pickups[duty.id] = self.engine.pickups(duty, events)
             result = self.engine.apply_calendar(duty.id, events, now)
             merged.events.extend(result.events)
             merged.notifications.extend(result.notifications)

@@ -169,3 +169,32 @@ async def test_holiday_move_the_day_before_sends_a_moved_push(hass, entry_factor
     assert sent["mobile_a"] == "Moved to 2026-11-25: Put the bins out: Garbage + Recycling"
     assert sent["mobile_b"].startswith("تغيّر الموعد إلى 2026-11-25")
     assert rt.engine.occurrences["bins"].due.isoformat() == "2026-11-24"
+
+
+async def test_tidy_pickup_calendar_for_the_calendar_card(hass, entry_factory, calendar_events, notify_calls, freezer):
+    calendar_events["events"] = [
+        {"start": "2026-11-21", "end": "2026-11-22", "summary": "Hhw collection - northside"},
+        {"start": "2026-11-25", "end": "2026-11-26",
+         "summary": "Loose leaf - zone b - day 3, recycling - northside, and garbage - northside"},
+        {"start": "2026-12-02", "end": "2026-12-03", "summary": "Yard waste - northside and garbage - northside"},
+    ]
+    entry = entry_factory(extra=(
+        sub("duty", "bins", {
+            "module": "home", "title": {"en": "Put the bins out"},
+            "schedule": {"type": "calendar", "calendar": "calendar.trash_pickup", "match": ["garbage"],
+                         "lead": "1d", "notify_at": "18:00"},
+            "done_by": ["button"],
+        }, "Put the bins out"),
+    ))
+    await start(hass, entry, freezer)
+    tidy = "calendar.homekeeper_put_the_bins_out_pickups"
+    assert hass.states.get(tidy) is not None
+    resp = await hass.services.async_call(
+        "calendar", "get_events",
+        {"entity_id": tidy, "start_date_time": "2026-11-20T00:00:00", "end_date_time": "2026-11-27T00:00:00"},
+        blocking=True, return_response=True,
+    )
+    events = resp[tidy]["events"]
+    assert [(e["start"], e["summary"]) for e in events] == [("2026-11-25", "Garbage + Recycling")]
+    assert events[0]["description"] == "Put the bins out: the evening before"
+    assert hass.states.get(tidy).attributes["message"] == "Garbage + Recycling"  # the next pickup
