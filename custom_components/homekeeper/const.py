@@ -9,6 +9,7 @@ SUBENTRY_PERSON = "person"
 SUBENTRY_MODULE = "module"
 SUBENTRY_DUTY = "duty"
 SUBENTRY_BILLER = "biller"
+SUBENTRY_CALENDAR = "calendar"  # a tidy copy of another calendar (e.g. trash pickups)
 
 CONF_CONDITIONS = "conditions"  # "key=sensor.entity, key2=sensor.other"
 TICK_INTERVAL_MINUTES = 5

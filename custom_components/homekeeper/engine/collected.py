@@ -10,6 +10,7 @@ is shown as written.
 from __future__ import annotations
 
 import re
+from datetime import date
 
 # Canonical name, then the words that mean it. Display order follows this list.
 STREAMS: list[tuple[str, tuple[str, ...]]] = [
@@ -66,3 +67,25 @@ def translate(text: str, language: str) -> str:
     if language == "ar":
         parts = [ARABIC.get(p, p) for p in parts]
     return " + ".join(parts)
+
+
+def select_days(words: list[str], events: list[tuple[date, str]]) -> dict[date, list[str]]:
+    """The event titles on each day that contain any of `words` (every day when empty)."""
+    wanted = [w.lower() for w in words if str(w).strip()]
+    by_day: dict[date, list[str]] = {}
+    for day, summary in sorted(events):
+        text = (summary or "").strip()
+        if wanted and not any(w in text.lower() for w in wanted):
+            continue
+        seen = by_day.setdefault(day, [])
+        if text and text not in seen:
+            seen.append(text)
+    return by_day
+
+
+def pickups(words: list[str], events: list[tuple[date, str]]) -> list[tuple[date, str, str]]:
+    """(day, "Garbage + Recycling", the original titles) for each selected day."""
+    return [
+        (day, " + ".join(tidy(texts)), "\n".join(texts))
+        for day, texts in sorted(select_days(words, events).items())
+    ]

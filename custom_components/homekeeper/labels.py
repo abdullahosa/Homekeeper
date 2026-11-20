@@ -12,13 +12,20 @@ from typing import Any
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from .const import SUBENTRY_BILLER, SUBENTRY_DUTY, SUBENTRY_MODULE, SUBENTRY_PERSON
+from .const import (
+    SUBENTRY_BILLER,
+    SUBENTRY_CALENDAR,
+    SUBENTRY_DUTY,
+    SUBENTRY_MODULE,
+    SUBENTRY_PERSON,
+)
 
 _KIND = {
     SUBENTRY_PERSON: "Person",
     SUBENTRY_MODULE: "Module",
     SUBENTRY_DUTY: "Duty",
     SUBENTRY_BILLER: "Biller",
+    SUBENTRY_CALENDAR: "Calendar",
 }
 
 
@@ -38,7 +45,7 @@ def label_for(
         return f"{kind} · {data.get('name') or data.get('id')}"
     if stype == SUBENTRY_MODULE:
         return f"{kind} · {(data.get('title') or {}).get('en') or data.get('id')}"
-    if stype == SUBENTRY_BILLER:
+    if stype in (SUBENTRY_BILLER, SUBENTRY_CALENDAR):
         return f"{kind} · {data.get('name') or data.get('id')}"
     name = (data.get("title") or {}).get("en") or data.get("id")
     module = (modules or {}).get(data.get("module", ""), data.get("module", ""))

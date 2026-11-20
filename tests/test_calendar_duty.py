@@ -199,8 +199,9 @@ def test_tidy_and_translate():
 
 def test_pickups_are_the_matched_days_with_tidy_names():
     e = make(match=["garbage"])
-    assert e.pickups(e.duties["bins"], RECOLLECT) == [
+    assert [(d, what) for d, what, _raw in e.pickups(e.duties["bins"], RECOLLECT)] == [
         (date(2026, 11, 25), "Garbage + Recycling + Yard waste + Bulky waste"),
         (date(2026, 12, 2), "Garbage + Yard waste"),
         (date(2026, 12, 9), "Garbage + Recycling + Yard waste + Bulky waste"),
     ]
+    assert e.pickups(e.duties["bins"], RECOLLECT)[0][2].startswith("Loose leaf - zone b - day 3")

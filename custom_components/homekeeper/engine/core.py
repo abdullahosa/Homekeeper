@@ -388,23 +388,11 @@ class Engine:
     @staticmethod
     def calendar_days(duty: Duty, events: list[tuple[date, str]]) -> dict[date, list[str]]:
         """The event titles on each day that the duty's `match` words select."""
-        words = [w.lower() for w in duty.schedule.get("match", []) if str(w).strip()]
-        by_day: dict[date, list[str]] = {}
-        for day, summary in sorted(events):
-            text = (summary or "").strip()
-            if words and not any(w in text.lower() for w in words):
-                continue
-            seen = by_day.setdefault(day, [])
-            if text and text not in seen:
-                seen.append(text)
-        return by_day
+        return collected.select_days(duty.schedule.get("match", []), events)
 
-    def pickups(self, duty: Duty, events: list[tuple[date, str]]) -> list[tuple[date, str]]:
-        """Each selected day with what is collected, tidied: (day, "Garbage + Recycling")."""
-        return [
-            (day, " + ".join(collected.tidy(texts)))
-            for day, texts in sorted(self.calendar_days(duty, events).items())
-        ]
+    def pickups(self, duty: Duty, events: list[tuple[date, str]]) -> list[tuple[date, str, str]]:
+        """Each selected day with what is collected, tidied: (day, "Garbage + Recycling", raw)."""
+        return collected.pickups(duty.schedule.get("match", []), events)
 
     def calendar_lines(self, duty: Duty) -> list[str]:
         occ = self.occurrences.get(duty.id)

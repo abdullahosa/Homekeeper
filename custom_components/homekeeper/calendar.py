@@ -1,5 +1,6 @@
-"""Calendars: one with every occurrence projected forward, and a tidy copy of each
-followed calendar (trash pickups as "Garbage + Recycling"), one per calendar duty."""
+"""Calendars: one with every occurrence projected forward, and tidy copies of other
+calendars (trash pickups as "Garbage + Recycling"): one per Calendar item and one per
+duty that follows a calendar."""
 
 from __future__ import annotations
 
@@ -16,11 +17,18 @@ from .runtime import Runtime, get_runtime
 async def async_setup_entry(hass, entry, async_add_entities) -> None:
     runtime = get_runtime(hass, entry.entry_id)
     entities: list[CalendarEntity] = [HomekeeperCalendar(runtime)]
-    entities += [
-        PickupCalendar(runtime, duty.id)
-        for duty in runtime.engine.duties.values()
-        if duty.schedule.get("type") == "calendar"
-    ]
+    for cal_id, cfg in runtime.tidy_calendars.items():
+        entities.append(
+            PickupCalendar(runtime, f"cal:{cal_id}", cfg.get("name") or cal_id, f"tidycal_{cal_id}")
+        )
+    for duty in runtime.engine.duties.values():
+        if duty.schedule.get("type") == "calendar":
+            lead = duty.schedule.get("lead", "1d")
+            when = {"0d": "on the day", "1d": "the evening before"}.get(lead, f"{lead} before")
+            title = duty.display_title("en")
+            entities.append(
+                PickupCalendar(runtime, duty.id, f"{title} pickups", f"pickups_{duty.id}", f"{title}: {when}")
+            )
     async_add_entities(entities)
 
 
@@ -65,34 +73,30 @@ class HomekeeperCalendar(HomekeeperEntity, CalendarEntity):
 
 
 class PickupCalendar(HomekeeperEntity, CalendarEntity):
-    """The followed calendar, cleaned up: only the days the duty follows, titled with the
-    carts ("Garbage + Recycling + Yard waste"). Made for the calendar card."""
+    """Another calendar, cleaned up: only the days asked for, each titled with the carts
+    ("Garbage + Recycling + Yard waste"), original titles in the description. Made for
+    the calendar card. From a Calendar item, or from a duty that follows a calendar."""
 
     _attr_icon = "mdi:trash-can-outline"
 
-    def __init__(self, runtime: Runtime, duty_id: str) -> None:
+    def __init__(self, runtime: Runtime, key: str, name: str, unique: str, note: str = "") -> None:
         super().__init__(runtime)
-        self._duty_id = duty_id
-        duty = runtime.engine.duties[duty_id]
-        self._attr_unique_id = f"{runtime.entry.entry_id}_pickups_{duty_id}"
-        self._attr_name = f"{duty.display_title('en')} pickups"
+        self._key = key
+        self._note = note
+        self._attr_unique_id = f"{runtime.entry.entry_id}_{unique}"
+        self._attr_name = name
 
     def _events_between(self, start: date, end: date) -> list[CalendarEvent]:
-        duty = self.runtime.engine.duties.get(self._duty_id)
-        if duty is None:
-            return []
-        lead = duty.schedule.get("lead", "1d")
-        when = {"0d": "on the day", "1d": "the evening before"}.get(lead, f"{lead} before")
         out = []
-        for day, what in self.runtime.pickups.get(self._duty_id, []):
+        for day, what, raw in self.runtime.pickups.get(self._key, []):
             if start <= day < end:
                 out.append(
                     CalendarEvent(
                         start=day,
                         end=day + timedelta(days=1),
-                        summary=what or "Pickup",
-                        description=f"{duty.display_title('en')}: {when}",
-                        uid=f"{self._duty_id}:pickup:{day.isoformat()}",
+                        summary=what or raw or "Pickup",
+                        description="\n".join(p for p in (self._note, raw) if p) or None,
+                        uid=f"{self._key}:{day.isoformat()}",
                     )
                 )
         return out

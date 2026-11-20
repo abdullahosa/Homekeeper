@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Add calendar**: a tidy copy of another calendar to look at, with nothing to check off. Pick the calendar (for example the city trash calendar) and the words to keep (`garbage`), and Homekeeper adds `calendar.homekeeper_<name>` with only those days, each titled with the carts ("Garbage + Recycling + Yard waste") and the original title in the description. A missing source calendar shows as a health problem.
 - Each calendar duty adds a tidy calendar of its pickups ("Homekeeper Put the bins out pickups"): only the days the duty follows, titled with the carts ("Garbage + Recycling + Yard waste"), for HA's Calendar card. The followed calendar is now read six weeks ahead so a month view is full.
 - The dashboard card and the Homekeeper page now reload in the browser after every update. Their addresses carry a fingerprint of the file instead of the version number, which HACS updates do not change, so browsers could keep running an old card (for example showing the to-do list where `mode: bills` was asked for).
 - Calendar duties name the carts: a ReCollect title such as "Loose leaf - zone b - day 3, yard waste - northside, bulky waste - northside, recycling - northside, and garbage - northside" becomes "Garbage + Recycling + Yard waste + Bulky waste" (Arabic for Arabic readers). Leaf-vacuum days, drop-off events and the area name are left out; words it does not know are shown as written.

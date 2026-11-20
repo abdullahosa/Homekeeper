@@ -33,25 +33,24 @@ data:
 
 Packs are generic starting points. After importing, open each duty (Homekeeper > the duty > Reconfigure) to set owners, dates and amounts. You can also add duties by hand with **Add duty**, and change or delete any of them later. Packs never overwrite your edits unless you pass `overwrite: true`.
 
-### Trash and recycling night
+### Trash and recycling calendar
 
-Many city trash apps run on ReCollect, which gives every address a calendar link. Homekeeper can follow it, so "Put the bins out" opens the evening before each pickup, says what goes out (Garbage + Recycling), and moves when a holiday shifts the pickup.
+Many city trash apps run on ReCollect, which gives every address a calendar link. Its event titles are long ("Loose leaf - zone b - day 3, yard waste - northside, recycling - northside, and garbage - northside") and it may list drop-off and leaf collection days too. Homekeeper can show a tidy copy.
 
 1. Get the calendar link: look up your address on your city's trash schedule page, choose **Get a calendar > Add to Google Calendar**, and copy the link it shows. Delete everything from `?client_id=` onward.
-2. Settings > Devices & services > **Add integration > Remote Calendar**, paste the link. You get a calendar entity with every pickup.
-3. Homekeeper > **Add duty**, schedule type **calendar**: pick that calendar, set **Only events containing** to `garbage`, leave **lead** at `1d` (the evening before) and set the time for the heads-up (default 18:00). The filter matters if your calendar also lists drop-off events or leaf collection days, which are not curbside pickups. Homekeeper reads the carts out of each event ("Garbage + Recycling + Yard waste + Bulky waste") and leaves the rest out.
-4. Optional: put an NFC tag on the bin and add it to the duty, so a tap marks it done.
-5. Optional, for a dashboard: Homekeeper adds a tidy copy of the pickups as a calendar named after the duty ("Homekeeper Put the bins out pickups"), with only the days the duty follows, each titled with the carts. Show it with a Calendar card set to the list view:
+2. Settings > Devices & services > **Add integration > Remote Calendar**, paste the link.
+3. Homekeeper > **Add calendar**: name it (for example `Trash pickups`), pick that calendar, and set **Only events containing** to `garbage`. You get `calendar.homekeeper_trash_pickups` with only pickup days, each titled with the carts ("Garbage + Recycling + Yard waste"); the original title is in the event's description. Nothing to check off.
+4. Show it with a Calendar card in the list view:
 
    ```yaml
    type: calendar
    title: Trash pickups
    initial_view: listWeek   # the next 7 days as a list
    entities:
-     - calendar.homekeeper_put_the_bins_out_pickups
+     - calendar.homekeeper_trash_pickups
    ```
 
-Same-day delays sent as app alerts may not be in the calendar; keep your city's app for those.
+If you also want a push on bin night with a Done button, add a duty with schedule type **calendar** instead (or as well): it opens the evening before each pickup, says what goes out, moves when a holiday shifts the pickup, and waits until 18:00 to notify. Same-day delays sent as app alerts may not be in the calendar; keep your city's app for those.
 
 ## Keeping track of what is set up
 
